@@ -12,8 +12,8 @@
       // Mirrors packages/web/src/lib/theme.ts — keep the two in step.
       (() => {
         try {
-          const t = localStorage.getItem('theme');
-          if (t === 'dark' || t === 'light') document.documentElement.classList.add(t);
+          if (localStorage.getItem('theme') === 'dark')
+            document.documentElement.classList.add('dark-mode');
         } catch {
           /* Private mode can refuse localStorage; following the OS is a fine fallback. */
         }
