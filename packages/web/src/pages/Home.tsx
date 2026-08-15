@@ -1,5 +1,6 @@
 import { APP_NAME } from '@hamscaler/shared';
 import { Link } from 'react-router-dom';
+import mascot from '../assets/turboham-evolution.gif';
 
 /**
  * The public front of the site.
@@ -66,10 +67,14 @@ export default function Home() {
             Demo sign-in: <code>ada@example.com</code> · <code>hamster-wheel-9000</code>
           </p>
         </div>
-        <span
-          className="mascot mascot-lg hero-mascot"
-          role="img"
-          aria-label="TurboHam, the pixel dwarf hamster mascot in teal headphones"
+        <img
+          className="hero-mascot"
+          src={mascot}
+          // Intrinsic size stated so the browser reserves the space before the GIF loads;
+          // without it the hero reflows around it once it arrives and the heading jumps.
+          width={280}
+          height={271}
+          alt="TurboHam evolving: the pixel hamster in teal headphones flashes white and grows, twice, ending as a broad-shouldered ogre with a heavy brow and a smirk"
         />
       </section>
 

@@ -443,10 +443,15 @@ a {
   margin-bottom: 0.75rem;
 }
 
+/* The evolution GIF. `pixelated` keeps it crisp when it scales; `max-width` stops it
+   overflowing the column on a narrow screen, and `height: auto` then keeps the aspect ratio
+   the width/height attributes declared. */
 .hero-mascot {
   align-self: center;
-  image-rendering: pixelated;
   justify-self: center;
+  image-rendering: pixelated;
+  max-width: 100%;
+  height: auto;
 }
 
 code {
