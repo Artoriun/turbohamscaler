@@ -99,3 +99,28 @@ test('the header stays one row and the page never scrolls sideways', async ({ pa
   expect(overflows, `page scrolls sideways at ${testInfo.project.name}`).toBe(false);
   expect(header, 'header wrapped to a second row').toBeLessThanOrEqual(64);
 });
+
+test('the theme toggle switches, persists, and does not flash on reload', async ({ page }) => {
+  await page.goto('/');
+  const root = page.locator('html');
+  const toggle = page.getByRole('button', { name: /theme/i });
+
+  // Starts following the operating system, so neither class is set.
+  await expect(root).not.toHaveClass(/\b(light|dark)\b/);
+
+  await toggle.click();
+  await expect(root).toHaveClass(/\b(light|dark)\b/);
+  const chosen = (await root.getAttribute('class')) ?? '';
+
+  await page.reload();
+  // The class must be present in the very first paint, not applied by React afterwards —
+  // otherwise the visitor sees the other theme for a frame on every load. The inline script in
+  // index.html is what makes this pass.
+  await expect(root).toHaveClass(
+    new RegExp(chosen.includes('dark') ? '\\bdark\\b' : '\\blight\\b'),
+  );
+
+  // Cycling again returns to following the system.
+  await toggle.click();
+  await expect(root).not.toHaveClass(/\b(light|dark)\b/);
+});

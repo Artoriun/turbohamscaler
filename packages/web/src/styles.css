@@ -15,8 +15,29 @@
   color-scheme: light dark;
 }
 
+/* Tells the browser which set of form controls and scrollbars to draw. Without it an explicit
+   choice restyles the page but leaves native widgets from the other theme. */
+:root.dark {
+  color-scheme: dark;
+}
+:root.light {
+  color-scheme: light;
+}
+
+/* Three ways in, in priority order.
+ *
+ *  1. `.dark` on <html> — an explicit choice, set by the toggle and by the inline script in
+ *     index.html before first paint.
+ *  2. the operating system's preference, but only while no explicit choice exists, which is
+ *     what `:root:not(.light):not(.dark)` says.
+ *  3. otherwise light.
+ *
+ * The dark values are written twice on purpose. A media query cannot be overridden by a class
+ * that appears later in the cascade unless the class wins on specificity, and the alternative
+ * — a second layer of indirection through more variables — costs more to read than a repeated
+ * block costs to maintain. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light):not(.dark) {
     --bg: #0f1216;
     --panel: #171b21;
     --fg: #e7eaef;
@@ -27,6 +48,18 @@
     --danger: #f87171;
     --shadow: none;
   }
+}
+
+:root.dark {
+  --bg: #0f1216;
+  --panel: #171b21;
+  --fg: #e7eaef;
+  --muted: #97a1b0;
+  --line: #262c35;
+  --accent: #2dd4bf;
+  --accent-fg: #06231f;
+  --danger: #f87171;
+  --shadow: none;
 }
 
 * {
@@ -434,6 +467,7 @@ a {
 }
 
 .hero-mascot {
+  align-self: center;
   image-rendering: pixelated;
   justify-self: center;
 }
@@ -523,4 +557,17 @@ code {
 }
 .centre-block h1 {
   margin: 0;
+}
+
+.theme-toggle {
+  background: none;
+  color: var(--muted);
+  border-color: var(--line);
+  padding: 0.4rem 0.6rem;
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.theme-toggle:hover {
+  color: var(--fg);
 }

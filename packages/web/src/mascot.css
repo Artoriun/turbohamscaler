@@ -1,0 +1,687 @@
+/* The mascot: a 16-pose sprite sheet stepped through by keyframes, lifted from
+   TurboHamstarter so the two share a face. An SVG rather than the README's gif — the gif has
+   no alpha, so it carries a black box wherever the page is not black.
+
+   Sized at exactly 2x the 16x15 grid so every source pixel maps to a whole device pixel; a
+   fractional scale is what makes pixel art look soft. step-end holds each pose for its whole
+   slice instead of sliding between them. */
+
+.mascot {
+  display: inline-block;
+  background-image: url("./assets/hamster-sprite.svg");
+  background-repeat: no-repeat;
+  background-size: 1600% 100%;
+  image-rendering: pixelated;
+  animation: hamster-idle 72.73s step-end infinite;
+  /* drop-shadow follows the sprite's alpha, so the glow traces the silhouette rather than
+     boxing the element the way box-shadow would. color-mix keeps it tracking --accent per
+     theme instead of pinning to one shade. */
+  filter: drop-shadow(0 0 1px color-mix(in srgb, var(--accent) 55%, transparent))
+    drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 30%, transparent));
+}
+
+.mascot-sm {
+  width: 32px;
+  height: 30px;
+}
+.mascot-lg {
+  width: 160px;
+  height: 150px;
+}
+.mascot-md {
+  width: 96px;
+  height: 90px;
+}
+
+/* A glow only reads as one where it is lighter than what is behind it — true on a dark page,
+   but the same values on a light one just look like a dark rim. It cannot win on luminosity
+   there, so it wins on size and saturation instead. */
+:root:not(.dark) .mascot {
+  filter: drop-shadow(0 0 1px color-mix(in srgb, var(--accent) 75%, transparent))
+    drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 55%, transparent))
+    drop-shadow(0 0 11px color-mix(in srgb, var(--accent) 35%, transparent));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot {
+    animation: none;
+  }
+}
+
+@keyframes hamster-idle {
+  0.0% {
+    background-position: 0.0% 0;
+  }
+  0.6875% {
+    background-position: 6.6667% 0;
+  }
+  1.3749% {
+    background-position: 13.3333% 0;
+  }
+  2.0624% {
+    background-position: 6.6667% 0;
+  }
+  2.7499% {
+    background-position: 0.0% 0;
+  }
+  3.4374% {
+    background-position: 6.6667% 0;
+  }
+  4.1248% {
+    background-position: 13.3333% 0;
+  }
+  4.8123% {
+    background-position: 6.6667% 0;
+  }
+  5.4998% {
+    background-position: 0.0% 0;
+  }
+  6.1873% {
+    background-position: 6.6667% 0;
+  }
+  6.8747% {
+    background-position: 13.3333% 0;
+  }
+  7.5622% {
+    background-position: 6.6667% 0;
+  }
+  8.2497% {
+    background-position: 0.0% 0;
+  }
+  8.9372% {
+    background-position: 6.6667% 0;
+  }
+  9.6246% {
+    background-position: 13.3333% 0;
+  }
+  10.3121% {
+    background-position: 6.6667% 0;
+  }
+  10.9996% {
+    background-position: 0.0% 0;
+  }
+  11.6871% {
+    background-position: 6.6667% 0;
+  }
+  12.3745% {
+    background-position: 13.3333% 0;
+  }
+  13.062% {
+    background-position: 6.6667% 0;
+  }
+  13.7495% {
+    background-position: 26.6667% 0;
+  }
+  14.2995% {
+    background-position: 20.0% 0;
+  }
+  14.8494% {
+    background-position: 33.3333% 0;
+  }
+  15.3994% {
+    background-position: 20.0% 0;
+  }
+  15.9494% {
+    background-position: 0.0% 0;
+  }
+  16.6369% {
+    background-position: 6.6667% 0;
+  }
+  17.3244% {
+    background-position: 13.3333% 0;
+  }
+  18.0118% {
+    background-position: 6.6667% 0;
+  }
+  18.6993% {
+    background-position: 0.0% 0;
+  }
+  19.3868% {
+    background-position: 6.6667% 0;
+  }
+  20.0742% {
+    background-position: 13.3333% 0;
+  }
+  20.7617% {
+    background-position: 6.6667% 0;
+  }
+  21.4492% {
+    background-position: 0.0% 0;
+  }
+  22.1367% {
+    background-position: 6.6667% 0;
+  }
+  22.8241% {
+    background-position: 13.3333% 0;
+  }
+  23.5116% {
+    background-position: 6.6667% 0;
+  }
+  24.1991% {
+    background-position: 0.0% 0;
+  }
+  24.8866% {
+    background-position: 6.6667% 0;
+  }
+  25.574% {
+    background-position: 13.3333% 0;
+  }
+  26.2615% {
+    background-position: 6.6667% 0;
+  }
+  26.949% {
+    background-position: 0.0% 0;
+  }
+  27.6365% {
+    background-position: 6.6667% 0;
+  }
+  28.3239% {
+    background-position: 13.3333% 0;
+  }
+  29.0114% {
+    background-position: 6.6667% 0;
+  }
+  29.6989% {
+    background-position: 26.6667% 0;
+  }
+  30.2489% {
+    background-position: 20.0% 0;
+  }
+  30.7988% {
+    background-position: 33.3333% 0;
+  }
+  31.3488% {
+    background-position: 20.0% 0;
+  }
+  31.8988% {
+    background-position: 0.0% 0;
+  }
+  32.5863% {
+    background-position: 6.6667% 0;
+  }
+  33.2738% {
+    background-position: 13.3333% 0;
+  }
+  33.9612% {
+    background-position: 6.6667% 0;
+  }
+  34.6487% {
+    background-position: 0.0% 0;
+  }
+  35.3362% {
+    background-position: 6.6667% 0;
+  }
+  36.0236% {
+    background-position: 13.3333% 0;
+  }
+  36.7111% {
+    background-position: 6.6667% 0;
+  }
+  37.3986% {
+    background-position: 0.0% 0;
+  }
+  38.0861% {
+    background-position: 6.6667% 0;
+  }
+  38.7735% {
+    background-position: 13.3333% 0;
+  }
+  39.461% {
+    background-position: 6.6667% 0;
+  }
+  40.1485% {
+    background-position: 0.0% 0;
+  }
+  40.836% {
+    background-position: 6.6667% 0;
+  }
+  41.5234% {
+    background-position: 13.3333% 0;
+  }
+  42.2109% {
+    background-position: 6.6667% 0;
+  }
+  42.8984% {
+    background-position: 0.0% 0;
+  }
+  43.5859% {
+    background-position: 6.6667% 0;
+  }
+  44.2733% {
+    background-position: 13.3333% 0;
+  }
+  44.9608% {
+    background-position: 6.6667% 0;
+  }
+  45.6483% {
+    background-position: 26.6667% 0;
+  }
+  46.1983% {
+    background-position: 20.0% 0;
+  }
+  46.7482% {
+    background-position: 33.3333% 0;
+  }
+  47.2982% {
+    background-position: 20.0% 0;
+  }
+  47.8482% {
+    background-position: 40.0% 0;
+  }
+  48.0132% {
+    background-position: 46.6667% 0;
+  }
+  48.1782% {
+    background-position: 53.3333% 0;
+  }
+  48.3432% {
+    background-position: 60.0% 0;
+  }
+  51.3681% {
+    background-position: 66.6667% 0;
+  }
+  51.4918% {
+    background-position: 73.3333% 0;
+  }
+  51.6156% {
+    background-position: 80.0% 0;
+  }
+  51.7393% {
+    background-position: 6.6667% 0;
+  }
+  52.4268% {
+    background-position: 0.0% 0;
+  }
+  53.1143% {
+    background-position: 6.6667% 0;
+  }
+  53.8017% {
+    background-position: 13.3333% 0;
+  }
+  54.4892% {
+    background-position: 6.6667% 0;
+  }
+  55.1767% {
+    background-position: 0.0% 0;
+  }
+  55.8642% {
+    background-position: 6.6667% 0;
+  }
+  56.5516% {
+    background-position: 13.3333% 0;
+  }
+  57.2391% {
+    background-position: 6.6667% 0;
+  }
+  57.9266% {
+    background-position: 0.0% 0;
+  }
+  58.6141% {
+    background-position: 6.6667% 0;
+  }
+  59.3015% {
+    background-position: 13.3333% 0;
+  }
+  59.989% {
+    background-position: 6.6667% 0;
+  }
+  60.6765% {
+    background-position: 0.0% 0;
+  }
+  61.3639% {
+    background-position: 6.6667% 0;
+  }
+  62.0514% {
+    background-position: 13.3333% 0;
+  }
+  62.7389% {
+    background-position: 6.6667% 0;
+  }
+  63.4264% {
+    background-position: 0.0% 0;
+  }
+  64.1138% {
+    background-position: 6.6667% 0;
+  }
+  64.8013% {
+    background-position: 13.3333% 0;
+  }
+  65.4888% {
+    background-position: 6.6667% 0;
+  }
+  66.1763% {
+    background-position: 26.6667% 0;
+  }
+  66.7262% {
+    background-position: 20.0% 0;
+  }
+  67.2762% {
+    background-position: 33.3333% 0;
+  }
+  67.8262% {
+    background-position: 20.0% 0;
+  }
+  68.3762% {
+    background-position: 0.0% 0;
+  }
+  69.0637% {
+    background-position: 6.6667% 0;
+  }
+  69.7511% {
+    background-position: 13.3333% 0;
+  }
+  70.4386% {
+    background-position: 6.6667% 0;
+  }
+  71.1261% {
+    background-position: 0.0% 0;
+  }
+  71.8136% {
+    background-position: 6.6667% 0;
+  }
+  72.501% {
+    background-position: 13.3333% 0;
+  }
+  73.1885% {
+    background-position: 6.6667% 0;
+  }
+  73.876% {
+    background-position: 0.0% 0;
+  }
+  74.5635% {
+    background-position: 6.6667% 0;
+  }
+  75.2509% {
+    background-position: 13.3333% 0;
+  }
+  75.9384% {
+    background-position: 6.6667% 0;
+  }
+  76.6259% {
+    background-position: 0.0% 0;
+  }
+  77.3134% {
+    background-position: 6.6667% 0;
+  }
+  78.0008% {
+    background-position: 13.3333% 0;
+  }
+  78.6883% {
+    background-position: 6.6667% 0;
+  }
+  79.3758% {
+    background-position: 0.0% 0;
+  }
+  80.0632% {
+    background-position: 6.6667% 0;
+  }
+  80.7507% {
+    background-position: 13.3333% 0;
+  }
+  81.4382% {
+    background-position: 6.6667% 0;
+  }
+  82.1257% {
+    background-position: 26.6667% 0;
+  }
+  82.6756% {
+    background-position: 20.0% 0;
+  }
+  83.2256% {
+    background-position: 33.3333% 0;
+  }
+  83.7756% {
+    background-position: 20.0% 0;
+  }
+  84.3256% {
+    background-position: 86.6667% 0;
+  }
+  86.113% {
+    background-position: 93.3333% 0;
+  }
+  87.9005% {
+    background-position: 86.6667% 0;
+  }
+  89.6879% {
+    background-position: 93.3333% 0;
+  }
+  91.4753% {
+    background-position: 86.6667% 0;
+  }
+  93.2628% {
+    background-position: 93.3333% 0;
+  }
+  95.0502% {
+    background-position: 86.6667% 0;
+  }
+  96.8376% {
+    background-position: 93.3333% 0;
+  }
+  98.6251% {
+    background-position: 100.0% 0;
+  }
+  99.175% {
+    background-position: 6.6667% 0;
+  }
+}
+
+/* No hover or focus rule on the mascot, deliberately.
+   Speeding the sequence up on hover meant that pointing at the wordmark — or clicking it,
+   which leaves the pointer sitting there — made TurboHam suddenly tear through his idle,
+   and on a touch device the hover state sticks after the tap so he never slowed down
+   again. He keeps his own time. */
+
+.brand-word {
+  font-size: 1.0625rem;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.brand-turbo {
+  font-weight: 400;
+  color: var(--text-soft);
+}
+.brand-ham {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: var(--text-soft);
+  font-size: 0.9375rem;
+  padding: 6px 0;
+  border-bottom: 1.5px solid transparent;
+}
+.nav-link {
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease;
+}
+.nav-link:hover {
+  color: var(--text);
+}
+.nav-link.is-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 4px;
+}
+
+/* Header controls.
+   Deliberately not the bordered pill the rest of the page uses for buttons — the source
+   design uses that shape here too, and repeating it made the header read as a copy. These
+   are chromeless instead: no border and no fill until you interact, so the header stays
+   quiet and the only boxed thing in it is a real call to action.
+
+   The language pair is one segmented control rather than two buttons, which also stops it
+   reading as a row of pills. */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+.theme-toggle:hover {
+  background: color-mix(in srgb, var(--text) 8%, transparent);
+  color: var(--text);
+}
+.theme-toggle:active {
+  transform: scale(0.92);
+}
+.theme-toggle svg {
+  width: 15px;
+  height: 15px;
+  /* currentColor is what makes this monochrome: ink on light, off-white on dark, with no
+     second value to keep in step. */
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+}
+.lang-btn {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  /* Not --text-muted: the track behind these sits at 7% ink, darker than the page, which
+     drops muted text to 4.19:1. The inactive language still reads as inactive — the
+     selected one gets the raised white pill and full --text. */
+  color: var(--text-soft);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  padding: 5px 9px;
+  transition:
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+.lang-btn:hover {
+  color: var(--text);
+}
+.lang-btn.is-active {
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+}
+.theme-toggle:active,
+.lang-btn:active {
+  transform: scale(0.94);
+}
+
+/* Hamburger, shown only on narrow viewports.
+   Animated in CSS rather than with Motion on purpose: the header is in the prerendered
+   markup, and Motion would write an inline style there that hydration disagrees about.
+   A transition costs nothing and touches no attribute React compares. */
+.nav-toggle {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 8px;
+}
+.nav-toggle-bar {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition:
+    transform 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.18s ease;
+}
+/* Driven off aria-expanded, so the state the assistive tech reads and the state the
+   animation reads cannot drift apart. */
+.nav-toggle[aria-expanded="true"] .nav-toggle-bar:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle-bar:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0.4);
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle-bar:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
+
+@media (max-width: 640px) {
+  .nav-toggle {
+    display: flex;
+  }
+  .site-nav {
+    position: absolute;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 0 20px;
+    background: var(--bg);
+    border-bottom: 1px solid transparent;
+    /* visibility, not display: display cannot be transitioned, but visibility can be
+       delayed until the collapse finishes — and unlike opacity alone it also takes the
+       links out of the tab order while the menu is shut. */
+    max-height: 0;
+    opacity: 0;
+    visibility: hidden;
+    overflow: hidden;
+    transition:
+      max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.2s ease,
+      padding 0.28s ease,
+      visibility 0s linear 0.28s;
+  }
+  .site-nav.is-open {
+    max-height: 320px;
+    opacity: 1;
+    visibility: visible;
+    padding: 16px 20px 20px;
+    border-bottom-color: var(--border);
+    transition:
+      max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.2s ease 0.04s,
+      padding 0.28s ease,
+      visibility 0s;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Content
+   --------------------------------------------------------------------------- */
+.hero {
+  padding: 48px 0 56px;
+  max-width: 100%;
+}

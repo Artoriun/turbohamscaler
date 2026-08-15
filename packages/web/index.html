@@ -7,6 +7,18 @@
     <meta name="description" content="A TurboRepo starter for a multi-tenant web app." />
   </head>
   <body>
+    <script>
+      // Before first paint, so an explicit choice never flashes the other theme on the way in.
+      // Mirrors packages/web/src/lib/theme.ts — keep the two in step.
+      (() => {
+        try {
+          const t = localStorage.getItem('theme');
+          if (t === 'dark' || t === 'light') document.documentElement.classList.add(t);
+        } catch {
+          /* Private mode can refuse localStorage; following the OS is a fine fallback. */
+        }
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

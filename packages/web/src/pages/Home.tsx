@@ -66,12 +66,10 @@ export default function Home() {
             Demo sign-in: <code>ada@example.com</code> · <code>hamster-wheel-9000</code>
           </p>
         </div>
-        <img
-          className="hero-mascot"
-          src="/turboham.gif"
-          alt="TurboHam, the pixel dwarf hamster mascot in teal headphones, swaying and twitching his nose before bolting off-screen and popping back up"
-          width="200"
-          height="200"
+        <span
+          className="mascot mascot-lg hero-mascot"
+          role="img"
+          aria-label="TurboHam, the pixel dwarf hamster mascot in teal headphones"
         />
       </section>
 
