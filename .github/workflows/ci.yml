@@ -51,13 +51,15 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install chromium
 
-      # apt occasionally fails to reach a mirror on a shared runner. Three attempts turns a
-      # flake that fails an unrelated PR into a slower green run.
+      # apt on a shared runner both fails and, less often, hangs holding a lock. A bare retry
+      # loop only helps with the first: a hang never returns to be retried, and the job dies on
+      # its own timeout with nothing useful in the log. `timeout` turns that into a retry too.
       - name: Install browser OS dependencies
+        timeout-minutes: 12
         run: |
           for attempt in 1 2 3; do
-            npx playwright install-deps chromium && exit 0
-            [ "$attempt" = 3 ] || echo "apt attempt $attempt failed; retrying"
+            timeout 180 npx playwright install-deps chromium && exit 0
+            [ "$attempt" = 3 ] || echo "apt attempt $attempt failed or hung; retrying"
             sleep $((attempt * 15))
           done
           echo "::error::npx playwright install-deps chromium failed three times"
