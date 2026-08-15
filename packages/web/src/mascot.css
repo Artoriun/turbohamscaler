@@ -13,9 +13,15 @@
   background-size: 1600% 100%;
   image-rendering: pixelated;
   animation: hamster-idle 72.73s step-end infinite;
-  /* drop-shadow follows the sprite's alpha, so the glow traces the silhouette rather than
-     boxing the element the way box-shadow would. color-mix keeps it tracking --accent per
-     theme instead of pinning to one shade. */
+}
+
+/* The glow belongs to the mascot, not to the technique used to draw him — so the sprite and
+   both GIFs share it. drop-shadow follows the alpha channel, so it traces the silhouette
+   either way rather than boxing the element as box-shadow would. color-mix keeps it tracking
+   --accent per theme instead of pinning to one shade. */
+.mascot,
+.brand-mark,
+.hero-mascot {
   filter: drop-shadow(0 0 1px color-mix(in srgb, var(--accent) 55%, transparent))
     drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 30%, transparent));
 }
@@ -36,7 +42,9 @@
 /* A glow only reads as one where it is lighter than what is behind it — true on a dark page,
    but the same values on a light one just look like a dark rim. It cannot win on luminosity
    there, so it wins on size and saturation instead. */
-:root:not(.dark-mode) .mascot {
+:root:not(.dark-mode) .mascot,
+:root:not(.dark-mode) .brand-mark,
+:root:not(.dark-mode) .hero-mascot {
   filter: drop-shadow(0 0 1px color-mix(in srgb, var(--accent) 75%, transparent))
     drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 55%, transparent))
     drop-shadow(0 0 11px color-mix(in srgb, var(--accent) 35%, transparent));
@@ -684,4 +692,17 @@
 .hero {
   padding: 48px 0 56px;
   max-width: 100%;
+}
+
+/* The hero image is nearly ten times the header mark's size, so the radii that read as a glow
+   at 32px disappear on it. Scaled to match, in both themes. */
+.hero-mascot {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 55%, transparent))
+    drop-shadow(0 0 12px color-mix(in srgb, var(--accent) 30%, transparent));
+}
+
+:root:not(.dark-mode) .hero-mascot {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--accent) 75%, transparent))
+    drop-shadow(0 0 14px color-mix(in srgb, var(--accent) 55%, transparent))
+    drop-shadow(0 0 30px color-mix(in srgb, var(--accent) 35%, transparent));
 }
