@@ -584,3 +584,42 @@ code {
   image-rendering: pixelated;
   flex-shrink: 0;
 }
+
+/* Language switcher, ported from TurboHamstarter. */
+.lang-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+.lang-btn {
+  background: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  cursor: pointer;
+}
+.lang-btn:hover {
+  color: var(--fg);
+}
+.lang-btn.is-active {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* The sign-in and no-API screens have no header, so their controls float. */
+.floating-controls {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}

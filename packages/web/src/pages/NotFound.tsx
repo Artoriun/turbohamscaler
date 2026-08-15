@@ -1,15 +1,19 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import mascot from '../assets/turboham-evolution.gif';
+import { pathFor, resolveLang, useT } from '../i18n';
 
 export default function NotFound() {
+  const t = useT();
+  const lang = resolveLang(useLocation().pathname);
+
   return (
     <section className="centre-block">
       {/* Room for the full animation here, unlike the header. */}
       <img className="hero-mascot" src={mascot} width={210} height={203} alt="" />
-      <h1>Nothing here</h1>
-      <p className="muted">TurboHam checked behind the wheel. That page does not exist.</p>
-      <Link className="button" to="/">
-        Back to the start
+      <h1>{t.notFound.title}</h1>
+      <p className="muted">{t.notFound.body}</p>
+      <Link className="button" to={pathFor(lang, '/')}>
+        {t.notFound.back}
       </Link>
     </section>
   );

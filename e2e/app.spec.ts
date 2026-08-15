@@ -135,3 +135,24 @@ test('served without an API, the portal says so instead of offering a broken for
   await expect(page.getByRole('heading', { name: 'No API behind this copy' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Sign in' })).toHaveCount(0);
 });
+
+test('Japanese lives at its own path, and the switcher navigates there', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+
+  await page.getByRole('button', { name: /JA/ }).click();
+  // A navigation, not a state change: the language has to be in the URL or the page cannot be
+  // linked to, shared or reloaded in the language you are reading.
+  await expect(page).toHaveURL(/\/ja$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('マルチテナント');
+
+  // Deep links work directly, without going through the switcher.
+  await page.goto('/ja/app');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+  await expect(page.getByRole('heading', { name: 'サインイン' })).toBeVisible();
+
+  await page.getByRole('button', { name: /EN/ }).click();
+  await expect(page).toHaveURL(/\/app$/);
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+});

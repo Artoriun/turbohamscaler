@@ -9,6 +9,20 @@
 
 export const APP_NAME = 'TurboHamscaler';
 
+// ── languages ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Supported languages, most-default first.
+ *
+ * Lives here rather than in the web package so anything that needs the list — a prerenderer,
+ * a sitemap generator — reads the same one. The dictionaries in packages/web/src/i18n are
+ * checked against it, so adding a code here without a dictionary is a type error rather than
+ * a page of blanks.
+ */
+export const LANGS = ['en', 'ja'] as const;
+export type Lang = (typeof LANGS)[number];
+export const DEFAULT_LANG: Lang = LANGS[0];
+
 // ── roles ────────────────────────────────────────────────────────────────────────────────
 
 /**

@@ -1,70 +1,50 @@
-import { APP_NAME } from '@hamscaler/shared';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import mascot from '../assets/turboham-evolution.gif';
+import { pathFor, resolveLang, useT } from '../i18n';
 
 /**
  * The public front of the site.
  *
  * Imports nothing from lib/api on purpose: a visitor who has never signed in should not cause
- * a request to the app's API, and keeping that boundary in the imports is what stops the
- * marketing page slowly acquiring app concerns.
+ * a request to the app's API, and keeping that boundary visible in the imports is what stops
+ * the marketing page slowly acquiring app concerns.
  */
-
-const FEATURES = [
-  {
-    title: 'Accounts that revoke',
-    body: 'Sessions are rows, not tokens. Signing out everywhere actually ends every session, on every device — no waiting for a token to expire.',
-  },
-  {
-    title: 'Organisations and roles',
-    body: 'Members, admins and owners, with per-organisation data. Everyone starts in an organisation of their own and joins others by invitation.',
-  },
-  {
-    title: 'Tenant isolation, proven',
-    body: 'Every tenant query lives in one file and takes the organisation first. A test suite written from the attacker’s side proves the rows stay apart.',
-  },
-  {
-    title: 'Migrations that refuse to drift',
-    body: 'Applied in order and hashed, so editing one that has already run is an error rather than a database that quietly differs from everyone else’s.',
-  },
-  {
-    title: 'Runs on nothing',
-    body: 'No account, no container, no native build. Install, seed, and you have a working app with two organisations to poke at.',
-  },
-  {
-    title: 'A pipeline that fails loudly',
-    body: 'Lint, types, tenancy guards, unit and API tests, a bundle budget, and the browser suite run twice — against the dev server and the built output.',
-  },
-];
-
 export default function Home() {
+  const t = useT();
+  const lang = resolveLang(useLocation().pathname);
+
+  const features = [
+    t.home.features.accounts,
+    t.home.features.orgs,
+    t.home.features.isolation,
+    t.home.features.migrations,
+    t.home.features.nothing,
+    t.home.features.pipeline,
+  ];
+
   return (
     <>
       <section className="hero">
         <div className="hero-text">
-          <p className="eyebrow">TurboRepo starter</p>
+          <p className="eyebrow">{t.home.eyebrow}</p>
           <h1>
-            The boring half of a multi-tenant app, <em>already done</em>.
+            {t.home.headline} <em>{t.home.headlineAccent}</em>.
           </h1>
-          <p className="lede">
-            {APP_NAME} gives you accounts, organisations, roles and per-tenant data — with the
-            isolation checks that keep them honest. Clone it and start on the part that is actually
-            yours.
-          </p>
+          <p className="lede">{t.home.lede}</p>
           <div className="cta">
-            <Link className="button" to="/app">
-              Open the demo
+            <Link className="button" to={pathFor(lang, '/app')}>
+              {t.home.openDemo}
             </Link>
             <a
               className="button ghost"
               href="https://github.com/Artoriun/turbohamscaler"
               rel="noreferrer"
             >
-              Read the source
+              {t.home.readSource}
             </a>
           </div>
           <p className="muted small">
-            Demo sign-in: <code>ada@example.com</code> · <code>hamster-wheel-9000</code>
+            {t.home.demoSignIn} <code>ada@example.com</code> · <code>hamster-wheel-9000</code>
           </p>
         </div>
         <img
@@ -79,9 +59,9 @@ export default function Home() {
       </section>
 
       <section className="features">
-        <h2>What you get</h2>
+        <h2>{t.home.whatYouGet}</h2>
         <div className="grid">
-          {FEATURES.map((f) => (
+          {features.map((f) => (
             <article key={f.title} className="feature">
               <h3>{f.title}</h3>
               <p>{f.body}</p>
@@ -91,14 +71,11 @@ export default function Home() {
       </section>
 
       <section className="start">
-        <h2>Start in three commands</h2>
+        <h2>{t.home.startHeading}</h2>
         <pre>
           <code>{'npm install\nnpm run db:seed\nnpm run dev'}</code>
         </pre>
-        <p className="muted">
-          Two organisations are seeded on purpose. Sign in as one and the other’s data is simply not
-          there — which is the whole point.
-        </p>
+        <p className="muted">{t.home.startNote}</p>
       </section>
     </>
   );

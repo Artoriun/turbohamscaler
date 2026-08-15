@@ -1,8 +1,10 @@
 import { APP_NAME, type OrganisationMembership, type Project, type Role } from '@hamscaler/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import mark from '../assets/turboham-mark.gif';
+import LanguageToggle from '../components/LanguageToggle';
 import ThemeToggle from '../components/ThemeToggle';
+import { fill, pathFor, resolveLang, useT } from '../i18n';
 import {
   ApiError,
   apiCreateProject,
@@ -28,6 +30,7 @@ import {
  * exists mostly to demonstrate structure.
  */
 export default function Portal() {
+  const t = useT();
   const [session, setSession] = useState<{ organisations: OrganisationMembership[] } | null>(null);
   const [orgId, setOrgId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -70,12 +73,22 @@ export default function Portal() {
   if (loading) {
     return (
       <main className="centre">
-        <p className="muted">Loading…</p>
+        <p className="muted">{t.portal.loading}</p>
       </main>
     );
   }
   if (!hasApi) return <NoApi />;
-  if (!session) return <SignIn onDone={load} />;
+  if (!session) {
+    return (
+      <>
+        <div className="floating-controls">
+          <LanguageToggle />
+          <ThemeToggle />
+        </div>
+        <SignIn onDone={load} />
+      </>
+    );
+  }
 
   const org = session.organisations.find((o) => o.id === orgId);
 
@@ -88,11 +101,11 @@ export default function Portal() {
             {APP_NAME}
           </Link>
           <label className="org-picker">
-            <span className="sr-only">Organisation</span>
+            <span className="sr-only">{t.portal.organisation}</span>
             <select
               value={orgId}
               onChange={(e) => setOrgId(e.target.value)}
-              aria-label="Organisation"
+              aria-label={t.portal.organisation}
             >
               {session.organisations.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -102,6 +115,7 @@ export default function Portal() {
             </select>
           </label>
           {org ? <RoleBadge role={org.role} /> : null}
+          <LanguageToggle />
           <ThemeToggle />
           <button
             type="button"
@@ -111,7 +125,7 @@ export default function Portal() {
               setSession(null);
             }}
           >
-            Sign out
+            {t.auth.signOut}
           </button>
         </div>
       </header>
@@ -122,8 +136,9 @@ export default function Portal() {
             <div className="page-head">
               <h1>{org.name}</h1>
               <p className="muted">
-                You are {org.role === 'owner' ? 'the owner' : `an ${org.role}`} of this
-                organisation. Everything below belongs to it and to nobody else.
+                {org.role === 'owner'
+                  ? t.portal.ownerOf
+                  : fill(t.portal.memberOf, { role: org.role })}
               </p>
             </div>
             <div className="columns">
@@ -144,21 +159,19 @@ export default function Portal() {
  * unconfigured, and the visitor has no way to tell which.
  */
 function NoApi() {
+  const t = useT();
   return (
     <main className="centre">
       <section className="panel auth">
         <span className="mascot mascot-md" aria-hidden="true" />
-        <h1>No API behind this copy</h1>
-        <p className="muted">
-          The public pages are static, so they deploy anywhere. The app needs a server for accounts
-          and per-tenant data, and this deploy has none.
-        </p>
-        <p className="muted">Run it locally and everything below works:</p>
+        <h1>{t.portal.noApiTitle}</h1>
+        <p className="muted">{t.portal.noApiBody}</p>
+        <p className="muted">{t.portal.noApiRun}</p>
         <pre>
           <code>{'npm install\nnpm run db:seed\nnpm run dev'}</code>
         </pre>
         <Link className="button" to="/">
-          Back to the overview
+          {t.portal.backToOverview}
         </Link>
       </section>
     </main>
@@ -170,6 +183,7 @@ function RoleBadge({ role }: { role: Role }) {
 }
 
 function SignIn({ onDone }: { onDone: () => void }) {
+  const t = useT();
   const [mode, setMode] = useState<'in' | 'up'>('in');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -190,12 +204,12 @@ function SignIn({ onDone }: { onDone: () => void }) {
       // would undo that.
       setError(
         err instanceof ApiError && err.code === 'weak-password'
-          ? 'Password must be at least 10 characters.'
+          ? t.auth.weakPassword
           : err instanceof ApiError && err.code === 'email-taken'
-            ? 'That address already has an account.'
+            ? t.auth.emailTaken
             : mode === 'in'
-              ? 'Those details were not accepted.'
-              : 'Could not create that account.',
+              ? t.auth.rejected
+              : t.auth.couldNotCreate,
       );
     } finally {
       setBusy(false);
@@ -206,14 +220,10 @@ function SignIn({ onDone }: { onDone: () => void }) {
     <main className="centre">
       <form className="panel auth" onSubmit={submit}>
         <span className="mascot mascot-md" aria-hidden="true" />
-        <h1>{mode === 'in' ? 'Sign in' : 'Create an account'}</h1>
-        <p className="muted">
-          {mode === 'in'
-            ? 'Your organisation and its data are waiting.'
-            : 'You will get an organisation of your own to start in.'}
-        </p>
+        <h1>{mode === 'in' ? t.auth.signIn : t.auth.createAccount}</h1>
+        <p className="muted">{mode === 'in' ? t.auth.signInNote : t.auth.signUpNote}</p>
         <label>
-          Email
+          {t.auth.email}
           <input
             type="email"
             value={email}
@@ -224,12 +234,12 @@ function SignIn({ onDone }: { onDone: () => void }) {
         </label>
         {mode === 'up' ? (
           <label>
-            Name
+            {t.auth.name}
             <input value={name} onChange={(e) => setName(e.target.value)} required />
           </label>
         ) : null}
         <label>
-          Password
+          {t.auth.password}
           <input
             type="password"
             value={password}
@@ -244,10 +254,10 @@ function SignIn({ onDone }: { onDone: () => void }) {
           </p>
         ) : null}
         <button type="submit" disabled={busy}>
-          {busy ? 'Working…' : mode === 'in' ? 'Sign in' : 'Create account'}
+          {busy ? t.auth.working : mode === 'in' ? t.auth.signIn : t.auth.createAccountAction}
         </button>
         <button type="button" className="link" onClick={() => setMode(mode === 'in' ? 'up' : 'in')}>
-          {mode === 'in' ? 'Create an account instead' : 'I already have an account'}
+          {mode === 'in' ? t.auth.switchToSignUp : t.auth.switchToSignIn}
         </button>
       </form>
     </main>
@@ -255,6 +265,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
 }
 
 function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
+  const t = useT();
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -272,7 +283,7 @@ function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
   return (
     <section className="panel">
       <div className="panel-head">
-        <h2>Projects</h2>
+        <h2>{t.portal.projects}</h2>
         {projects ? <span className="count">{projects.length}</span> : null}
       </div>
 
@@ -292,23 +303,23 @@ function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
         }}
       >
         <label className="grow">
-          <span className="sr-only">New project name</span>
+          <span className="sr-only">{t.portal.newProjectLabel}</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="New project"
-            aria-label="New project name"
+            placeholder={t.portal.newProject}
+            aria-label={t.portal.newProjectLabel}
           />
         </label>
         <button type="submit" disabled={busy}>
-          Add
+          {t.portal.add}
         </button>
       </form>
 
       {projects === null ? (
-        <p className="muted">Loading…</p>
+        <p className="muted">{t.portal.loading}</p>
       ) : projects.length === 0 ? (
-        <p className="empty">No projects yet.</p>
+        <p className="empty">{t.portal.noProjects}</p>
       ) : (
         <ul className="list">
           {projects.map((p) => (
@@ -325,9 +336,9 @@ function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
                     await apiDeleteProject(orgId, p.id);
                     await refresh();
                   }}
-                  aria-label={`Delete ${p.name}`}
+                  aria-label={fill(t.portal.deleteNamed, { name: p.name })}
                 >
-                  Delete
+                  {t.portal.delete}
                 </button>
               ) : null}
             </li>
@@ -339,6 +350,7 @@ function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
 }
 
 function Members({ orgId }: { orgId: string }) {
+  const t = useT();
   const [members, setMembers] = useState<{ id: string; name: string; email: string; role: Role }[]>(
     [],
   );
@@ -356,7 +368,7 @@ function Members({ orgId }: { orgId: string }) {
   return (
     <section className="panel">
       <div className="panel-head">
-        <h2>Members</h2>
+        <h2>{t.portal.members}</h2>
         <span className="count">{members.length}</span>
       </div>
       <ul className="list">
@@ -370,9 +382,7 @@ function Members({ orgId }: { orgId: string }) {
           </li>
         ))}
       </ul>
-      <p className="muted small">
-        Roles decide what each person may do. Only an admin or owner can remove a project.
-      </p>
+      <p className="muted small">{t.portal.rolesNote}</p>
     </section>
   );
 }
