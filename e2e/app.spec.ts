@@ -83,3 +83,19 @@ test('wrong credentials are refused without saying which part was wrong', async 
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('alert')).toHaveText('Those details were not accepted.');
 });
+
+test('the header stays one row and the page never scrolls sideways', async ({ page }, testInfo) => {
+  // Both faults were only visible on a phone: the header wrapped the call to action onto a
+  // second row and doubled its own height, which is the first thing anyone sees.
+  await page.goto('/');
+  const { header, overflows } = await page.evaluate(() => {
+    const bar = document.querySelector('.topbar-inner') as HTMLElement;
+    const doc = document.documentElement;
+    return {
+      header: bar.getBoundingClientRect().height,
+      overflows: doc.scrollWidth > doc.clientWidth + 1,
+    };
+  });
+  expect(overflows, `page scrolls sideways at ${testInfo.project.name}`).toBe(false);
+  expect(header, 'header wrapped to a second row').toBeLessThanOrEqual(64);
+});
