@@ -96,9 +96,9 @@ export default function Portal() {
     <>
       <header className="topbar">
         <div className="topbar-inner">
-          <Link className="brand" to="/">
+          <Link className="brand" to="/" aria-label={APP_NAME}>
             <img className="brand-mark" src={mark} width={48} height={32} alt="" />
-            {APP_NAME}
+            <span className="brand-name">{APP_NAME}</span>
           </Link>
           <label className="org-picker">
             <span className="sr-only">{t.portal.organisation}</span>

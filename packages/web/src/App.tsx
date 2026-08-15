@@ -58,9 +58,9 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
     <>
       <header className="topbar">
         <div className="topbar-inner">
-          <Link className="brand" to={home}>
+          <Link className="brand" to={home} aria-label={APP_NAME}>
             <img className="brand-mark" src={mark} width={48} height={32} alt="" />
-            {APP_NAME}
+            <span className="brand-name">{APP_NAME}</span>
           </Link>
           <nav className="nav">
             <NavLink to={home} end>
