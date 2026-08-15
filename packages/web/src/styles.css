@@ -111,7 +111,9 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-shrink: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -413,6 +415,10 @@ a {
   background: var(--accent);
   color: var(--accent-fg);
   text-decoration: none;
+  /* The <button> rule already has this; a link styled as a button needs it too. Without it
+     the label wraps to two lines on a narrower font — invisible on macOS, and the reason the
+     header grew a second row on CI's Linux runner. */
+  white-space: nowrap;
 }
 .button.ghost {
   background: none;
