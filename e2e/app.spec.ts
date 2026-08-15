@@ -124,3 +124,20 @@ test('the theme toggle switches, persists, and does not flash on reload', async 
   await toggle.click();
   await expect(root).not.toHaveClass(/\b(light|dark)\b/);
 });
+
+test('served without an API, the portal says so instead of offering a broken form', async ({
+  page,
+}) => {
+  // What the GitHub Pages deploy is: static files, no server. A static host answers an
+  // unknown path with its own 404, which is what this simulates.
+  await page.route('**/api/**', (route) =>
+    route.fulfill({
+      status: 404,
+      contentType: 'text/html',
+      body: '<!doctype html><title>404</title>',
+    }),
+  );
+  await page.goto('/app');
+  await expect(page.getByRole('heading', { name: 'No API behind this copy' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toHaveCount(0);
+});

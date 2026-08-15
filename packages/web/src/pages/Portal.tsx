@@ -12,7 +12,6 @@ import {
   apiSignIn,
   apiSignOut,
   apiSignUp,
-  HAS_API,
   SIGNED_OUT_EVENT,
 } from '../lib/api';
 
@@ -31,18 +30,24 @@ export default function Portal() {
   const [session, setSession] = useState<{ organisations: OrganisationMembership[] } | null>(null);
   const [orgId, setOrgId] = useState('');
   const [loading, setLoading] = useState(true);
+  const [hasApi, setHasApi] = useState(true);
 
   const load = useCallback(async () => {
-    if (!HAS_API) {
-      setLoading(false);
-      return;
-    }
     try {
       const me = await apiMe();
       setSession(me);
       setOrgId((current) => current || (me.organisations[0]?.id ?? ''));
-    } catch {
+      setHasApi(true);
+    } catch (err) {
       setSession(null);
+      // Whether an API exists is decided by the answer, not by a build-time flag. A 401 is a
+      // server saying "not you" — proof one is there. Anything else (a static host's 404 for
+      // an unknown path, a refused connection) means there is nothing behind this copy.
+      //
+      // Done at runtime because the alternative needs VITE_API_URL set at build time, which
+      // is both a knob to forget and wrong for the common case of a reverse proxy serving the
+      // app and the API on one origin.
+      setHasApi(err instanceof ApiError && err.status === 401);
     } finally {
       setLoading(false);
     }
@@ -68,7 +73,7 @@ export default function Portal() {
       </main>
     );
   }
-  if (!HAS_API) return <NoApi />;
+  if (!hasApi) return <NoApi />;
   if (!session) return <SignIn onDone={load} />;
 
   const org = session.organisations.find((o) => o.id === orgId);
