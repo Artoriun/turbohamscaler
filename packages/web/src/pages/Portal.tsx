@@ -12,6 +12,7 @@ import {
   apiSignIn,
   apiSignOut,
   apiSignUp,
+  HAS_API,
   SIGNED_OUT_EVENT,
 } from '../lib/api';
 
@@ -32,6 +33,10 @@ export default function Portal() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!HAS_API) {
+      setLoading(false);
+      return;
+    }
     try {
       const me = await apiMe();
       setSession(me);
@@ -63,6 +68,7 @@ export default function Portal() {
       </main>
     );
   }
+  if (!HAS_API) return <NoApi />;
   if (!session) return <SignIn onDone={load} />;
 
   const org = session.organisations.find((o) => o.id === orgId);
@@ -122,6 +128,34 @@ export default function Portal() {
         ) : null}
       </main>
     </>
+  );
+}
+
+/**
+ * Shown where the app is served without an API — the GitHub Pages deploy, for instance.
+ *
+ * A sign-in form that cannot succeed is worse than no form: it looks broken rather than
+ * unconfigured, and the visitor has no way to tell which.
+ */
+function NoApi() {
+  return (
+    <main className="centre">
+      <section className="panel auth">
+        <span className="mascot mascot-md" aria-hidden="true" />
+        <h1>No API behind this copy</h1>
+        <p className="muted">
+          The public pages are static, so they deploy anywhere. The app needs a server for accounts
+          and per-tenant data, and this deploy has none.
+        </p>
+        <p className="muted">Run it locally and everything below works:</p>
+        <pre>
+          <code>{'npm install\nnpm run db:seed\nnpm run dev'}</code>
+        </pre>
+        <Link className="button" to="/">
+          Back to the overview
+        </Link>
+      </section>
+    </main>
   );
 }
 
