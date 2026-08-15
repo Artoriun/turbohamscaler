@@ -37,12 +37,20 @@ const SKIP = new Map([
  */
 const workflow = readFileSync(join(ROOT, '.github/workflows/ci.yml'), 'utf8');
 
-// From the workflow's own env block, not a copy of it: the two published starters set
-// different base paths, and a hardcoded one here would be wrong in whichever this is not.
+// From the workflow's own env block, not a copy of it.
 const baseFromWorkflow = workflow.match(/^\s*BASE_PATH:\s*(\S+)/m)?.[1];
 
+/**
+ * Ports for the local run, away from the ones `npm run dev` uses.
+ *
+ * A CI runner has the machine to itself; a developer does not. Reusing the dev ports means a
+ * dev server left running turns the e2e steps into "port already in use", which reads as a
+ * test failure and sends you looking at the wrong thing.
+ */
 const ENV = {
   ...process.env,
+  WEB_PORT: process.env.WEB_PORT ?? '3491',
+  API_PORT: process.env.API_PORT ?? '4491',
   ...(baseFromWorkflow ? { BASE_PATH: process.env.BASE_PATH ?? baseFromWorkflow } : {}),
 };
 
