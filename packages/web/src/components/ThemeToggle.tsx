@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useT } from '../i18n';
 import { applyTheme, readTheme, type Theme } from '../lib/theme';
 
 /**
@@ -30,13 +31,14 @@ function SunIcon() {
 }
 
 export default function ThemeToggle() {
+  const t = useT();
   const [theme, setTheme] = useState<Theme>('light');
 
   useEffect(() => {
     setTheme(readTheme());
   }, []);
 
-  const label = theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
+  const label = theme === 'light' ? t.theme.toDark : t.theme.toLight;
 
   return (
     <button
