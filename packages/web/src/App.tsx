@@ -61,6 +61,9 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
             {APP_NAME} — a TurboRepo starter for multi-tenant apps. Every service it needs has a
             free tier, so the running cost is a hamster-appropriate zero.
           </span>
+          <a href="https://github.com/Artoriun/turbohamscaler" rel="noreferrer">
+            Source on GitHub
+          </a>
         </div>
       </footer>
     </>
