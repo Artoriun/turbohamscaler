@@ -10,6 +10,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# The public pages are served from a project subpath, so the build needs to know it.
+env:
+  BASE_PATH: /turbohamscaler/
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   checks:
     runs-on: ubuntu-latest
@@ -78,3 +87,40 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # Only the public site. The app needs a server, and says so when it is served without one —
+  # see NoApi in packages/web/src/pages/Portal.tsx.
+  deploy:
+    needs: checks
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build for Pages
+        run: npm run build
+        env:
+          VITE_BASE: ${{ env.BASE_PATH }}
+
+      # A single-page app on a static host needs the 404 to be the app itself, or a deep link
+      # like /turbohamscaler/app returns the host's own 404 and never boots the router.
+      - name: SPA fallback
+        run: cp packages/web/dist/index.html packages/web/dist/404.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/web/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

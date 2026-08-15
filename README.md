@@ -8,6 +8,11 @@ per-tenant data, with the isolation checks that keep them honest.
 It runs on nothing. No account, no container, no native build — `npm install && npm run dev`
 gives you a working app with a seeded demo tenant. TurboHam scales by adding wheels.
 
+[![CI](https://github.com/Artoriun/turbohamscaler/actions/workflows/ci.yml/badge.svg)](https://github.com/Artoriun/turbohamscaler/actions/workflows/ci.yml)
+
+**Public pages:** https://artoriun.github.io/turbohamscaler/ — the app itself needs a server,
+so run it locally to sign in.
+
 <br clear="right">
 
 > Building a portfolio or marketing site instead? That is
@@ -19,7 +24,7 @@ gives you a working app with a seeded demo tenant. TurboHam scales by adding whe
 
 | | |
 | --- | --- |
-| **Front end** | React, TypeScript, Vite |
+| **Front end** | React, TypeScript, Vite, React Router |
 | **Back end** | Express, SQLite (`node:sqlite`) |
 | **Tooling** | TurboRepo, Biome, Playwright |
 
@@ -66,6 +71,7 @@ npm run db:reset       # delete the local database and reseed
   rather than a silent divergence
 - **Rate-limited sign-in**, recorded in the database so a restart does not reset it
 - **Seeded demo data**, two organisations, no cloud account
+- **Light, dark or follow the system**, chosen before first paint so the theme never flashes
 
 ---
 
@@ -106,8 +112,18 @@ again against the built output.
 
 ## Deployment
 
-The API is a plain Express app and the front end is static, so both fit the free tier of most
-hosts. `node:sqlite` writes to a local file, which suits a single instance; past that, point
+The two halves deploy separately.
+
+**The public pages are static.** CI builds them with `VITE_BASE` and publishes to GitHub Pages
+on every push to `main`. Set `BASE_PATH` at the top of `.github/workflows/ci.yml` to your own
+repository name, or `/` for a custom domain. A static host needs `404.html` to be the app
+itself, or a deep link never boots the router — the workflow copies `index.html` over it.
+
+**The app needs a server.** It is a plain Express app, so it fits the free tier of most hosts;
+point the front end at it with `VITE_API_URL` at build time. Served without one — as on the
+Pages deploy above — the portal says so rather than showing a sign-in form that cannot work.
+
+`node:sqlite` writes to a local file, which suits a single instance. Past that, point
 `DATABASE_URL` at a hosted database and replace `packages/api/src/db/index.ts` — nothing above
 the query helpers imports a driver.
 
