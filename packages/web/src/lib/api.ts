@@ -17,17 +17,6 @@ import type {
 
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
-/**
- * Whether there is an API to talk to at all.
- *
- * The public pages are static and deploy anywhere; the app behind them needs a server. On a
- * static host with no VITE_API_URL every call would resolve against the static origin and
- * 404, so the portal says so plainly instead of offering a sign-in form that cannot work.
- *
- * Dev is exempt: there VITE_API_URL is normally unset because Vite proxies /api locally.
- */
-export const HAS_API = import.meta.env.DEV || BASE !== '';
-
 /** Fired when the API says the session is gone, so the app can show the sign-in form once. */
 export const SIGNED_OUT_EVENT = 'hamscaler-signed-out';
 
