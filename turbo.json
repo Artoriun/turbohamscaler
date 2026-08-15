@@ -1,0 +1,17 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "dev": {
+      "cache": false,
+      "persistent": true,
+      "env": ["WEB_PORT", "API_PORT", "VITE_API_URL", "DATABASE_URL"]
+    },
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"],
+      "env": ["VITE_API_URL", "VITE_BASE"]
+    },
+    "typecheck": {}
+  },
+  "globalEnv": ["SITE_URL", "BASE_PATH", "NODE_ENV"]
+}

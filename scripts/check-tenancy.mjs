@@ -1,0 +1,84 @@
+#!/usr/bin/env node
+/**
+ * Two structural rules that keep tenant isolation reviewable:
+ *
+ *  1. Only repo.ts writes SQL against tenant-owned tables. A route that reaches for the
+ *     database directly is a tenant filter nobody will think to look for.
+ *  2. Every query in repo.ts that touches a tenant-owned table filters on org_id.
+ *
+ * Neither replaces isolation.test.ts, which proves behaviour. These catch the same mistake
+ * one layer earlier, and — more usefully — catch it in a query that no test happens to cover
+ * yet, which is where the next leak will be.
+ */
+
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
+const API = 'packages/api/src';
+/** Tables whose rows belong to exactly one organisation. */
+const TENANT_TABLES = ['projects'];
+/** Files allowed to contain SQL at all. */
+const SQL_ALLOWED = ['repo.ts', 'auth.ts', 'signInAttempts.ts', 'db/index.ts', 'db/migrate.ts'];
+
+const problems = [];
+let statementsChecked = 0;
+
+function walk(dir) {
+  const out = [];
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) out.push(...walk(full));
+    else if (entry.endsWith('.ts')) out.push(full);
+  }
+  return out;
+}
+
+const files = walk(API).filter((f) => !f.endsWith('.test.ts') && !f.includes('/testing/'));
+
+// ── rule 1: SQL only where it is allowed ─────────────────────────────────────────────────
+for (const file of files) {
+  const rel = file.slice(`${API}/`.length);
+  if (SQL_ALLOWED.some((a) => rel === a)) continue;
+  const src = readFileSync(file, 'utf8');
+  if (/\b(SELECT|INSERT|UPDATE|DELETE)\b\s/i.test(src)) {
+    problems.push(
+      `${file}: contains SQL. Tenant queries belong in repo.ts, behind a function that takes orgId.`,
+    );
+  }
+}
+
+// ── rule 2: every tenant-table query filters on org_id ────────────────────────────────────
+const repoSrc = readFileSync(join(API, 'repo.ts'), 'utf8');
+// Statements are single-quoted or backticked strings starting with a SQL verb.
+const statements =
+  repoSrc.match(/(['`])\s*(SELECT|INSERT INTO|UPDATE|DELETE FROM)[\s\S]*?\1/gi) ?? [];
+
+for (const raw of statements) {
+  const sql = raw.slice(1, -1).replace(/\s+/g, ' ').trim();
+  const touchesTenantTable = TENANT_TABLES.some((t) => new RegExp(`\\b${t}\\b`, 'i').test(sql));
+  if (!touchesTenantTable) continue;
+  statementsChecked++;
+  const filtered =
+    /org_id\s*=\s*\?/i.test(sql) || /INSERT INTO\s+\w+\s*\([^)]*\borg_id\b/i.test(sql);
+  if (!filtered) {
+    problems.push(`repo.ts: query touches a tenant table without an org_id filter:\n      ${sql}`);
+  }
+}
+
+// Without this the loop above can pass having inspected nothing — if the regex stops matching
+// the way statements are written, every rule here silently becomes a no-op.
+if (statementsChecked === 0) {
+  console.error(
+    '✗ parsed no tenant-table statements from repo.ts — the SQL is written in a shape this ' +
+      'script no longer recognises, so it is checking nothing. Fix the parser, not this line.',
+  );
+  process.exit(1);
+}
+
+if (problems.length > 0) {
+  console.error('✗ tenancy check failed:\n');
+  for (const p of problems) console.error(`  - ${p}`);
+  process.exit(1);
+}
+
+console.log(`✓ tenancy: ${statementsChecked} tenant-table statement(s), all filtered on org_id`);

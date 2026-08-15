@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+playwright-report/
+test-results/
+packages/web/public/sitemap.xml
+packages/web/public/robots.txt
+
+# Lighthouse reports written by scripts/check-lighthouse.mjs
+lighthouse-*.json
+.data/
+dist/
+node_modules/
+playwright-report/
+test-results/
+.turbo/
+.DS_Store

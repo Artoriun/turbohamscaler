@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    // The package ships raw TypeScript and its tests run under Node's type stripping, which
+    // requires the explicit .ts on relative imports.
+    "allowImportingTsExtensions": true
+  },
+  "include": ["src"]
+}
