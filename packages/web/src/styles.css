@@ -1,164 +1,321 @@
-/* Deliberately small: tokens, a card, a bar. The starter's value is underneath the UI, and a
-   design system here would be something to delete rather than something to build on. */
+/* Small on purpose: tokens, a panel, a list. A design system here would be something to
+   delete rather than something to build on. Both themes are defined because the app follows
+   the operating system's setting and neither is an afterthought. */
+
 :root {
-  --bg: #f6f7f9;
-  --fg: #16181d;
-  --muted: #5c6270;
-  --line: #dfe3ea;
-  --accent: #0f766e;
-  --danger: #b4232c;
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --fg: #14171c;
+  --muted: #5b6472;
+  --line: #e2e7ee;
+  --accent: #0d7a6f;
+  --accent-fg: #ffffff;
+  --danger: #a8202a;
+  --shadow: 0 1px 2px rgb(20 23 28 / 6%), 0 8px 24px rgb(20 23 28 / 6%);
   color-scheme: light dark;
 }
+
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14161a;
-    --fg: #e8eaee;
-    --muted: #a0a6b3;
-    --line: #2a2e37;
-    --accent: #5eead4;
+    --bg: #0f1216;
+    --panel: #171b21;
+    --fg: #e7eaef;
+    --muted: #97a1b0;
+    --line: #262c35;
+    --accent: #2dd4bf;
+    --accent-fg: #06231f;
+    --danger: #f87171;
+    --shadow: none;
   }
 }
+
 * {
   box-sizing: border-box;
 }
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--fg);
   font:
-    16px / 1.5 system-ui,
+    16px / 1.55 system-ui,
     -apple-system,
     "Segoe UI",
     sans-serif;
 }
-.shell {
-  max-width: 46rem;
-  margin: 0 auto;
-  padding: 1.5rem 1rem 4rem;
-}
-.bar {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
-  padding-bottom: 1rem;
+
+/* ── layout ─────────────────────────────────────────────────────────────────────────── */
+
+.topbar {
+  background: var(--panel);
   border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.topbar-inner,
+.page {
+  max-width: 62rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  flex-wrap: wrap;
+}
+
+.brand {
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mark {
+  font-size: 1.25rem;
+}
+.mark.big {
+  font-size: 2rem;
+}
+
+.page {
+  padding-block: 2rem 4rem;
+}
+
+.page-head {
   margin-bottom: 1.5rem;
 }
-.bar strong {
-  margin-right: auto;
+.page-head h1 {
+  margin: 0 0 0.25rem;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
 }
-.role {
+
+.columns {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+/* Two columns only where there is room for both to stay readable. */
+@media (min-width: 56rem) {
+  .columns {
+    grid-template-columns: 1.35fr 1fr;
+    align-items: start;
+  }
+}
+
+.centre {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+/* ── panels ─────────────────────────────────────────────────────────────────────────── */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.panel.auth {
+  width: min(24rem, 100%);
+  justify-items: start;
+  gap: 0.85rem;
+}
+.panel.auth h1 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+.panel.auth label,
+.panel.auth button[type="submit"] {
+  width: 100%;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.panel-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.count {
   font-size: 0.8rem;
   color: var(--muted);
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 0.1rem 0.5rem;
+  padding: 0 0.5rem;
 }
-.card {
-  background: canvas;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 1.25rem;
-  display: grid;
-  gap: 0.75rem;
-  max-width: 34rem;
-  margin: 0 auto;
-}
-.card h1,
-.card h2 {
-  margin: 0;
-  font-size: 1.15rem;
-}
+
+/* ── controls ───────────────────────────────────────────────────────────────────────── */
+
 label {
   display: grid;
-  gap: 0.25rem;
-  font-size: 0.9rem;
+  gap: 0.3rem;
+  font-size: 0.85rem;
   color: var(--muted);
 }
+
 input,
 select {
   font: inherit;
-  padding: 0.5rem 0.6rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: canvas;
   color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 0.55rem 0.65rem;
+  width: 100%;
 }
+
+input::placeholder {
+  color: var(--muted);
+}
+
 button {
   font: inherit;
-  padding: 0.5rem 0.9rem;
-  border-radius: 8px;
+  font-weight: 550;
+  padding: 0.55rem 0.95rem;
+  border-radius: 9px;
   border: 1px solid transparent;
   background: var(--accent);
-  color: canvas;
+  color: var(--accent-fg);
   cursor: pointer;
+  white-space: nowrap;
 }
-button:hover {
-  filter: brightness(1.08);
+
+button:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+button.ghost {
+  background: none;
+  color: var(--fg);
+  border-color: var(--line);
+}
+button.danger {
+  background: none;
+  color: var(--danger);
+  border-color: var(--line);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
 }
 button.link {
   background: none;
   color: var(--accent);
-  border-color: transparent;
   padding: 0;
-  justify-self: start;
+  font-weight: 500;
   text-decoration: underline;
 }
+
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
-form {
+
+.row {
   display: flex;
   gap: 0.5rem;
   align-items: end;
 }
-form label {
+.grow {
   flex: 1;
+  min-width: 0;
 }
-.card > form {
-  display: grid;
-}
-ul {
+
+/* ── lists ──────────────────────────────────────────────────────────────────────────── */
+
+.list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   gap: 0.5rem;
 }
-li {
+
+.list li {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
 }
-li span {
-  margin-right: auto;
+
+.list .title {
+  display: block;
+  overflow-wrap: anywhere;
 }
-li button {
-  background: none;
-  color: var(--danger);
-  border-color: var(--line);
+.list .meta {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.badge-owner {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+/* ── text ───────────────────────────────────────────────────────────────────────────── */
+
+.muted {
+  color: var(--muted);
+  margin: 0;
+}
+.small {
+  font-size: 0.85rem;
+}
+.empty {
+  color: var(--muted);
+  margin: 0;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  padding: 1rem;
+  text-align: center;
 }
 .error {
   color: var(--danger);
   margin: 0;
 }
-.empty {
-  color: var(--muted);
-  margin: 0;
-}
+
 .sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;

@@ -1,10 +1,11 @@
-import { APP_NAME, type OrganisationMembership, type Project } from '@hamscaler/shared';
+import { APP_NAME, type OrganisationMembership, type Project, type Role } from '@hamscaler/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import {
   ApiError,
   apiCreateProject,
   apiDeleteProject,
   apiMe,
+  apiMembers,
   apiProjects,
   apiSignIn,
   apiSignOut,
@@ -13,15 +14,15 @@ import {
 } from './lib/api';
 
 /**
- * The whole app: sign in, pick an organisation, work with its projects.
+ * The app: sign in, pick an organisation, work inside it.
  *
- * One file on purpose. The starter's value is the layers underneath — tenancy, sessions,
- * migrations, the checks — and a reader should be able to see what the UI does without
- * navigating a component tree that exists mostly to demonstrate structure.
+ * Kept to one file. The starter's value is underneath — tenancy, sessions, migrations, the
+ * checks — and a reader should be able to see the whole UI without navigating a component
+ * tree that exists mostly to demonstrate structure.
  */
 export default function App() {
   const [session, setSession] = useState<{ organisations: OrganisationMembership[] } | null>(null);
-  const [orgId, setOrgId] = useState<string>('');
+  const [orgId, setOrgId] = useState('');
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -49,43 +50,78 @@ export default function App() {
     return () => window.removeEventListener(SIGNED_OUT_EVENT, onSignedOut);
   }, []);
 
-  if (loading) return <main className="shell">Loading…</main>;
+  if (loading) {
+    return (
+      <main className="centre">
+        <p className="muted">Loading…</p>
+      </main>
+    );
+  }
   if (!session) return <SignIn onDone={load} />;
 
   const org = session.organisations.find((o) => o.id === orgId);
 
   return (
-    <main className="shell">
-      <header className="bar">
-        <strong>{APP_NAME}</strong>
-        <label>
-          <span className="sr-only">Organisation</span>
-          <select
-            value={orgId}
-            onChange={(e) => setOrgId(e.target.value)}
-            aria-label="Organisation"
+    <>
+      <header className="topbar">
+        <div className="topbar-inner">
+          <span className="brand">
+            <span className="mark" aria-hidden="true">
+              🐹
+            </span>
+            {APP_NAME}
+          </span>
+          <label className="org-picker">
+            <span className="sr-only">Organisation</span>
+            <select
+              value={orgId}
+              onChange={(e) => setOrgId(e.target.value)}
+              aria-label="Organisation"
+            >
+              {session.organisations.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          {org ? <RoleBadge role={org.role} /> : null}
+          <button
+            type="button"
+            className="ghost"
+            onClick={async () => {
+              await apiSignOut();
+              setSession(null);
+            }}
           >
-            {session.organisations.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        {org ? <span className="role">{org.role}</span> : null}
-        <button
-          type="button"
-          onClick={async () => {
-            await apiSignOut();
-            setSession(null);
-          }}
-        >
-          Sign out
-        </button>
+            Sign out
+          </button>
+        </div>
       </header>
-      {orgId ? <Projects orgId={orgId} canDelete={org?.role !== 'member'} /> : null}
-    </main>
+
+      <main className="page">
+        {org ? (
+          <>
+            <div className="page-head">
+              <h1>{org.name}</h1>
+              <p className="muted">
+                You are {org.role === 'owner' ? 'the owner' : `an ${org.role}`} of this
+                organisation. Everything below belongs to it and to nobody else.
+              </p>
+            </div>
+            <div className="columns">
+              <Projects orgId={org.id} canDelete={org.role !== 'member'} />
+              <Members orgId={org.id} />
+            </div>
+          </>
+        ) : null}
+      </main>
+    </>
   );
+}
+
+function RoleBadge({ role }: { role: Role }) {
+  return <span className={`badge badge-${role}`}>{role}</span>;
 }
 
 function SignIn({ onDone }: { onDone: () => void }) {
@@ -109,10 +145,12 @@ function SignIn({ onDone }: { onDone: () => void }) {
       // would undo that.
       setError(
         err instanceof ApiError && err.code === 'weak-password'
-          ? 'Password is too short.'
-          : mode === 'in'
-            ? 'Those details were not accepted.'
-            : 'Could not create that account.',
+          ? 'Password must be at least 10 characters.'
+          : err instanceof ApiError && err.code === 'email-taken'
+            ? 'That address already has an account.'
+            : mode === 'in'
+              ? 'Those details were not accepted.'
+              : 'Could not create that account.',
       );
     } finally {
       setBusy(false);
@@ -120,52 +158,63 @@ function SignIn({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form className="card" onSubmit={submit}>
-      <h1>{mode === 'in' ? 'Sign in' : 'Create an account'}</h1>
-      <label>
-        Email
-        <input
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="email"
-          required
-        />
-      </label>
-      {mode === 'up' ? (
-        <label>
-          Name
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
-        </label>
-      ) : null}
-      <label>
-        Password
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
-          required
-        />
-      </label>
-      {error ? (
-        <p className="error" role="alert">
-          {error}
+    <main className="centre">
+      <form className="panel auth" onSubmit={submit}>
+        <span className="mark big" aria-hidden="true">
+          🐹
+        </span>
+        <h1>{mode === 'in' ? 'Sign in' : 'Create an account'}</h1>
+        <p className="muted">
+          {mode === 'in'
+            ? 'Your organisation and its data are waiting.'
+            : 'You will get an organisation of your own to start in.'}
         </p>
-      ) : null}
-      <button type="submit" disabled={busy}>
-        {busy ? 'Working…' : mode === 'in' ? 'Sign in' : 'Create account'}
-      </button>
-      <button type="button" className="link" onClick={() => setMode(mode === 'in' ? 'up' : 'in')}>
-        {mode === 'in' ? 'Create an account instead' : 'I already have an account'}
-      </button>
-    </form>
+        <label>
+          Email
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
+          />
+        </label>
+        {mode === 'up' ? (
+          <label>
+            Name
+            <input value={name} onChange={(e) => setName(e.target.value)} required />
+          </label>
+        ) : null}
+        <label>
+          Password
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
+            required
+          />
+        </label>
+        {error ? (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <button type="submit" disabled={busy}>
+          {busy ? 'Working…' : mode === 'in' ? 'Sign in' : 'Create account'}
+        </button>
+        <button type="button" className="link" onClick={() => setMode(mode === 'in' ? 'up' : 'in')}>
+          {mode === 'in' ? 'Create an account instead' : 'I already have an account'}
+        </button>
+      </form>
+    </main>
   );
 }
 
 function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<Project[] | null>(null);
   const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     const { projects: list } = await apiProjects(orgId);
@@ -173,22 +222,33 @@ function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
   }, [orgId]);
 
   useEffect(() => {
+    setProjects(null);
     void refresh();
   }, [refresh]);
 
   return (
-    <section className="card">
-      <h2>Projects</h2>
+    <section className="panel">
+      <div className="panel-head">
+        <h2>Projects</h2>
+        {projects ? <span className="count">{projects.length}</span> : null}
+      </div>
+
       <form
+        className="row"
         onSubmit={async (e) => {
           e.preventDefault();
-          if (!name.trim()) return;
-          await apiCreateProject(orgId, name.trim());
-          setName('');
-          await refresh();
+          if (!name.trim() || busy) return;
+          setBusy(true);
+          try {
+            await apiCreateProject(orgId, name.trim());
+            setName('');
+            await refresh();
+          } finally {
+            setBusy(false);
+          }
         }}
       >
-        <label>
+        <label className="grow">
           <span className="sr-only">New project name</span>
           <input
             value={name}
@@ -197,18 +257,27 @@ function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
             aria-label="New project name"
           />
         </label>
-        <button type="submit">Add</button>
+        <button type="submit" disabled={busy}>
+          Add
+        </button>
       </form>
-      {projects.length === 0 ? (
+
+      {projects === null ? (
+        <p className="muted">Loading…</p>
+      ) : projects.length === 0 ? (
         <p className="empty">No projects yet.</p>
       ) : (
-        <ul>
+        <ul className="list">
           {projects.map((p) => (
             <li key={p.id}>
-              <span>{p.name}</span>
+              <div className="grow">
+                <span className="title">{p.name}</span>
+                <span className="meta">{new Date(p.createdAt).toLocaleDateString()}</span>
+              </div>
               {canDelete ? (
                 <button
                   type="button"
+                  className="danger"
                   onClick={async () => {
                     await apiDeleteProject(orgId, p.id);
                     await refresh();
@@ -222,6 +291,45 @@ function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+function Members({ orgId }: { orgId: string }) {
+  const [members, setMembers] = useState<{ id: string; name: string; email: string; role: Role }[]>(
+    [],
+  );
+
+  useEffect(() => {
+    let live = true;
+    void apiMembers(orgId).then(({ members: list }) => {
+      if (live) setMembers(list);
+    });
+    return () => {
+      live = false;
+    };
+  }, [orgId]);
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <h2>Members</h2>
+        <span className="count">{members.length}</span>
+      </div>
+      <ul className="list">
+        {members.map((m) => (
+          <li key={m.id}>
+            <div className="grow">
+              <span className="title">{m.name}</span>
+              <span className="meta">{m.email}</span>
+            </div>
+            <RoleBadge role={m.role} />
+          </li>
+        ))}
+      </ul>
+      <p className="muted small">
+        Roles decide what each person may do. Only an admin or owner can remove a project.
+      </p>
     </section>
   );
 }
