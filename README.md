@@ -1,6 +1,6 @@
 # TurboHamscaler
 
-<img src="docs/turboham.gif" alt="TurboHam, the pixel dwarf hamster mascot in teal headphones, swaying and twitching his nose before bolting off-screen and popping back up" width="180" align="right">
+<img src="docs/turboham-evolution.gif" alt="TurboHam evolving: the pixel hamster in teal headphones flashes white and grows, twice, ending as a broad-shouldered ogre with a heavy brow and a smirk" width="200" align="right">
 
 A **TurboRepo** starter for a multi-tenant web app: accounts, organisations, roles and
 per-tenant data, with the isolation checks that keep them honest.
