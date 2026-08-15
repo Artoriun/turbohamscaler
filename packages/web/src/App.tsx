@@ -1,5 +1,6 @@
 import { APP_NAME } from '@hamscaler/shared';
 import { Link, NavLink, Route, Routes } from 'react-router-dom';
+import ThemeToggle from './components/ThemeToggle';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
 import Portal from './pages/Portal';
@@ -36,7 +37,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
       <header className="topbar">
         <div className="topbar-inner">
           <Link className="brand" to="/">
-            <img src="/turboham.gif" alt="" width="28" height="28" className="mark" />
+            <span className="mascot mascot-sm" aria-hidden="true" />
             {APP_NAME}
           </Link>
           <nav className="nav">
@@ -47,6 +48,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
               Source
             </a>
           </nav>
+          <ThemeToggle />
           <Link className="button" to="/app">
             Open the app
           </Link>

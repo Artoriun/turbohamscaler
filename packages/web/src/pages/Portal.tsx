@@ -1,6 +1,7 @@
 import { APP_NAME, type OrganisationMembership, type Project, type Role } from '@hamscaler/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import ThemeToggle from '../components/ThemeToggle';
 import {
   ApiError,
   apiCreateProject,
@@ -71,7 +72,7 @@ export default function Portal() {
       <header className="topbar">
         <div className="topbar-inner">
           <Link className="brand" to="/">
-            <img src="/turboham.gif" alt="" width="28" height="28" className="mark" />
+            <span className="mascot mascot-sm" aria-hidden="true" />
             {APP_NAME}
           </Link>
           <label className="org-picker">
@@ -89,6 +90,7 @@ export default function Portal() {
             </select>
           </label>
           {org ? <RoleBadge role={org.role} /> : null}
+          <ThemeToggle />
           <button
             type="button"
             className="ghost"
@@ -163,7 +165,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
   return (
     <main className="centre">
       <form className="panel auth" onSubmit={submit}>
-        <img src="/turboham.gif" alt="" width="72" height="72" className="mark big" />
+        <span className="mascot mascot-md" aria-hidden="true" />
         <h1>{mode === 'in' ? 'Sign in' : 'Create an account'}</h1>
         <p className="muted">
           {mode === 'in'
