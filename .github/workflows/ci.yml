@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint and format check
+        run: npm run check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Structural guards on tenant isolation. Run before the tests they back up: when both
+      # fail, this one names the query, while a failing isolation test names a symptom.
+      - name: Tenancy guards
+        run: npm run check:tenancy
+
+      - name: API tests
+        run: npm run test:api
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Build
+        run: npm run build
+
+      - name: Budgets
+        run: npm run check:budgets
+
+      - name: Install Playwright browser
+        run: npx playwright install chromium
+
+      # apt occasionally fails to reach a mirror on a shared runner. Three attempts turns a
+      # flake that fails an unrelated PR into a slower green run.
+      - name: Install browser OS dependencies
+        run: |
+          for attempt in 1 2 3; do
+            npx playwright install-deps chromium && exit 0
+            [ "$attempt" = 3 ] || echo "apt attempt $attempt failed; retrying"
+            sleep $((attempt * 15))
+          done
+          echo "::error::npx playwright install-deps chromium failed three times"
+          exit 1
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Run the suite against the built output
+        run: npm run test:e2e:dist
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

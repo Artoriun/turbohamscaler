@@ -1,0 +1,167 @@
+/* Deliberately small: tokens, a card, a bar. The starter's value is underneath the UI, and a
+   design system here would be something to delete rather than something to build on. */
+:root {
+  --bg: #f6f7f9;
+  --fg: #16181d;
+  --muted: #5c6270;
+  --line: #dfe3ea;
+  --accent: #0f766e;
+  --danger: #b4232c;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e8eaee;
+    --muted: #a0a6b3;
+    --line: #2a2e37;
+    --accent: #5eead4;
+  }
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    16px / 1.5 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+}
+.shell {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+}
+.bar {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1.5rem;
+}
+.bar strong {
+  margin-right: auto;
+}
+.role {
+  font-size: 0.8rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+.card {
+  background: canvas;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+.card h1,
+.card h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+label {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+input,
+select {
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: canvas;
+  color: var(--fg);
+}
+button {
+  font: inherit;
+  padding: 0.5rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: canvas;
+  cursor: pointer;
+}
+button:hover {
+  filter: brightness(1.08);
+}
+button.link {
+  background: none;
+  color: var(--accent);
+  border-color: transparent;
+  padding: 0;
+  justify-self: start;
+  text-decoration: underline;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+}
+form label {
+  flex: 1;
+}
+.card > form {
+  display: grid;
+}
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+}
+li span {
+  margin-right: auto;
+}
+li button {
+  background: none;
+  color: var(--danger);
+  border-color: var(--line);
+}
+.error {
+  color: var(--danger);
+  margin: 0;
+}
+.empty {
+  color: var(--muted);
+  margin: 0;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
