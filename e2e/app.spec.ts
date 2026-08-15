@@ -11,7 +11,8 @@ const password = 'correct-horse-battery';
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
 
 async function signUp(page: import('@playwright/test').Page, email: string) {
-  await page.goto('/');
+  // The portal, not '/': that is the public page now.
+  await page.goto('/app');
   await page.getByRole('button', { name: 'Create an account instead' }).click();
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Name').fill('Test person');
