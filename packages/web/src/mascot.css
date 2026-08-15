@@ -36,7 +36,7 @@
 /* A glow only reads as one where it is lighter than what is behind it — true on a dark page,
    but the same values on a light one just look like a dark rim. It cannot win on luminosity
    there, so it wins on size and saturation instead. */
-:root:not(.dark) .mascot {
+:root:not(.dark-mode) .mascot {
   filter: drop-shadow(0 0 1px color-mix(in srgb, var(--accent) 75%, transparent))
     drop-shadow(0 0 5px color-mix(in srgb, var(--accent) 55%, transparent))
     drop-shadow(0 0 11px color-mix(in srgb, var(--accent) 35%, transparent));

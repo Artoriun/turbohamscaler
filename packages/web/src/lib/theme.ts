@@ -1,40 +1,33 @@
 /**
- * Light/dark preference.
+ * Light/dark preference, matching TurboHamstarter: two states, light by default, stored under
+ * `theme` and applied as `dark-mode` on <html>.
  *
- * Three states, not two: `system` is a real choice and the default, so a visitor who has never
- * touched the toggle follows their operating system and changes with it. Only `light` and
- * `dark` write a class, which is what lets the media query in styles.css stay in charge until
- * somebody overrides it deliberately.
+ * Light rather than the operating system's preference, deliberately — the palette is built
+ * from a light design, and following the OS would mean the default look depends on who is
+ * looking. The toggle is how you get the other one, and the choice sticks.
  *
  * The same logic runs twice — here, and inline in index.html before first paint. That
- * duplication is the price of not showing a flash of the wrong theme; keep them in step.
+ * duplication is the price of not flashing the wrong theme on the way in; keep them in step.
  */
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark';
 
 export const THEME_KEY = 'theme';
 
 export function readTheme(): Theme {
-  const stored = localStorage.getItem(THEME_KEY);
-  return stored === 'light' || stored === 'dark' ? stored : 'system';
+  try {
+    return localStorage.getItem(THEME_KEY) === 'dark' ? 'dark' : 'light';
+  } catch {
+    // Private mode can refuse localStorage; light is the documented default.
+    return 'light';
+  }
 }
 
 export function applyTheme(theme: Theme): void {
-  const root = document.documentElement;
-  root.classList.toggle('dark', theme === 'dark');
-  root.classList.toggle('light', theme === 'light');
-  if (theme === 'system') localStorage.removeItem(THEME_KEY);
-  else localStorage.setItem(THEME_KEY, theme);
-}
-
-/** What the page is actually showing, which for `system` depends on the OS. */
-export function resolvedTheme(theme: Theme): 'light' | 'dark' {
-  if (theme !== 'system') return theme;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-}
-
-/** The next theme in the cycle: whatever is showing now, flipped, then back to following the OS. */
-export function nextTheme(theme: Theme): Theme {
-  if (theme === 'system') return resolvedTheme('system') === 'dark' ? 'light' : 'dark';
-  return 'system';
+  document.documentElement.classList.toggle('dark-mode', theme === 'dark');
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch {
+    // Nothing to do — the class is applied either way, it just will not survive a reload.
+  }
 }

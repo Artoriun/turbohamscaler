@@ -103,26 +103,20 @@ test('the header stays one row and the page never scrolls sideways', async ({ pa
 test('the theme toggle switches, persists, and does not flash on reload', async ({ page }) => {
   await page.goto('/');
   const root = page.locator('html');
-  const toggle = page.getByRole('button', { name: /theme/i });
 
-  // Starts following the operating system, so neither class is set.
-  await expect(root).not.toHaveClass(/\b(light|dark)\b/);
+  // Light by default, same as TurboHamstarter — not the operating system's preference.
+  await expect(root).not.toHaveClass(/dark-mode/);
 
-  await toggle.click();
-  await expect(root).toHaveClass(/\b(light|dark)\b/);
-  const chosen = (await root.getAttribute('class')) ?? '';
+  await page.getByRole('button', { name: 'Switch to dark theme' }).click();
+  await expect(root).toHaveClass(/dark-mode/);
 
   await page.reload();
-  // The class must be present in the very first paint, not applied by React afterwards —
-  // otherwise the visitor sees the other theme for a frame on every load. The inline script in
-  // index.html is what makes this pass.
-  await expect(root).toHaveClass(
-    new RegExp(chosen.includes('dark') ? '\\bdark\\b' : '\\blight\\b'),
-  );
+  // Present in the very first paint, not applied by React afterwards — otherwise the visitor
+  // sees light for a frame on every load. The inline script in index.html is what does it.
+  await expect(root).toHaveClass(/dark-mode/);
 
-  // Cycling again returns to following the system.
-  await toggle.click();
-  await expect(root).not.toHaveClass(/\b(light|dark)\b/);
+  await page.getByRole('button', { name: 'Switch to light theme' }).click();
+  await expect(root).not.toHaveClass(/dark-mode/);
 });
 
 test('served without an API, the portal says so instead of offering a broken form', async ({
