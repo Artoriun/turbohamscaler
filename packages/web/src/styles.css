@@ -577,3 +577,11 @@ code {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* The header mark: its own cut of the animation, where every stage is scaled to the same
+   height. The growing version is wrong here — at this size its first stage lands at ten
+   pixels and the mark jumps on every evolution, on every page. */
+.brand-mark {
+  image-rendering: pixelated;
+  flex-shrink: 0;
+}
