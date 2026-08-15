@@ -623,3 +623,17 @@ code {
   gap: 0.5rem;
   align-items: center;
 }
+
+/* On a phone the wordmark, the language pill, the theme button and the call to action do not
+   all fit, and the brand is the one that loses — it was being truncated to a few characters.
+   Hidden below 30rem instead: the mascot still links home and still says the name to a screen
+   reader via the link's own label. */
+.brand-name {
+  display: none;
+}
+
+@media (min-width: 30rem) {
+  .brand-name {
+    display: inline;
+  }
+}
