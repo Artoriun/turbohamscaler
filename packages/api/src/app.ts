@@ -41,6 +41,7 @@ import {
   createUser,
   deleteOrganisation,
   deleteProject,
+  deleteUser,
   findInvitationByTokenHash,
   findUserByEmail,
   findUserById,
@@ -59,7 +60,10 @@ import {
   revokeInvitation,
   roleIn,
   setMemberRole,
+  soleOwnerships,
   updateProject,
+  updateUserName,
+  updateUserPassword,
 } from './repo.ts';
 import { clearAttempts, recordAttempt } from './signInAttempts.ts';
 
@@ -184,6 +188,68 @@ export function createApp(): Hono<AuthVariables> {
       return c.json({ error: 'not-signed-in' }, 401);
     }
     return c.json({ user, organisations: await organisationsFor(userId) });
+  });
+
+  // ── account ────────────────────────────────────────────────────────────────────────────
+
+  app.patch('/api/me', requireUser, async (c) => {
+    const { name } = await c.req.json().catch(() => ({}) as Record<string, unknown>);
+    if (typeof name !== 'string' || !name.trim()) {
+      return c.json({ error: 'invalid-details' }, 400);
+    }
+    const userId = c.get('userId');
+    await updateUserName(userId, name.trim());
+    return c.json({ user: await findUserById(userId) });
+  });
+
+  /**
+   * Change a password, and end every other session while doing it.
+   *
+   * The current password is required even though the caller is already signed in: without it,
+   * anyone who finds an unlocked screen can take the account permanently. Ending the other
+   * sessions is the point of changing it at all — if the reason is that someone else has it,
+   * leaving their session alive achieves nothing.
+   */
+  app.post('/api/me/password', requireUser, async (c) => {
+    const { current, next } = await c.req.json().catch(() => ({}) as Record<string, unknown>);
+    if (typeof current !== 'string' || typeof next !== 'string') {
+      return c.json({ error: 'invalid-details' }, 400);
+    }
+    if (next.length < MIN_PASSWORD_LENGTH) {
+      return c.json({ error: 'weak-password', minLength: MIN_PASSWORD_LENGTH }, 400);
+    }
+    const userId = c.get('userId');
+    const user = await findUserById(userId);
+    const stored = user ? (await findUserByEmail(user.email))?.password : undefined;
+    if (!stored || !(await verifyPassword(current, stored))) {
+      return c.json({ error: 'invalid-credentials' }, 403);
+    }
+    await updateUserPassword(userId, await hashPassword(next));
+    await destroyAllSessions(userId);
+    // Including this one, so a fresh cookie is issued rather than leaving the caller signed out
+    // by their own password change.
+    const session = await createSession(userId);
+    setSessionCookie(c, session.id, session.expiresAt);
+    return c.json({ ok: true });
+  });
+
+  /**
+   * Close the account.
+   *
+   * Refused while the caller is the only owner of an organisation: memberships cascade from the
+   * user, so allowing it would leave a workspace — possibly with other people in it — that
+   * nobody can administer. Hand it over or delete it first, and the reply says which ones.
+   */
+  app.delete('/api/me', requireUser, async (c) => {
+    const userId = c.get('userId');
+    const stranded = await soleOwnerships(userId);
+    if (stranded.length > 0) {
+      return c.json({ error: 'sole-owner', organisations: stranded }, 409);
+    }
+    await destroyAllSessions(userId);
+    await deleteUser(userId);
+    clearSessionCookie(c);
+    return c.json({ ok: true });
   });
 
   // ── organisations ──────────────────────────────────────────────────────────────────────
@@ -502,6 +568,9 @@ export const ROUTE_MANIFEST: RouteSpec[] = [
   { method: 'post', path: '/api/auth/sign-out', auth: 'user' },
   { method: 'post', path: '/api/auth/sign-out-everywhere', auth: 'user' },
   { method: 'get', path: '/api/me', auth: 'user' },
+  { method: 'patch', path: '/api/me', auth: 'user' },
+  { method: 'post', path: '/api/me/password', auth: 'user' },
+  { method: 'delete', path: '/api/me', auth: 'user' },
   { method: 'post', path: '/api/orgs', auth: 'user' },
   { method: 'patch', path: '/api/orgs/:orgId', auth: 'admin' },
   { method: 'delete', path: '/api/orgs/:orgId', auth: 'owner' },

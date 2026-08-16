@@ -18,6 +18,8 @@ import {
   ApiError,
   apiAcceptInvitation,
   apiAudit,
+  apiChangePassword,
+  apiCloseAccount,
   apiCreateOrg,
   apiCreateProject,
   apiDeleteOrg,
@@ -30,6 +32,7 @@ import {
   apiProjects,
   apiRemoveMember,
   apiRenameOrg,
+  apiRenameSelf,
   apiRevokeInvitation,
   apiSetMemberRole,
   apiSignIn,
@@ -190,6 +193,7 @@ export default function Portal() {
               />
             </div>
             <OrganisationSettings org={org} onChanged={load} />
+            <Account onChanged={load} />
             {org.role !== 'member' ? <Activity orgId={org.id} reloadKey={activityKey} /> : null}
           </>
         ) : null}
@@ -463,6 +467,128 @@ function OrganisationSettings({
         </button>
       ) : null}
 
+      {error ? <p className="error">{error}</p> : null}
+    </section>
+  );
+}
+
+/**
+ * Your own name, password and account.
+ *
+ * The password form asks for the current one even though you are signed in, because the server
+ * does — and because the case it exists for is somebody else already being signed in as you.
+ * Changing it ends every other session, which is the part worth telling you about afterwards.
+ */
+function Account({ onChanged }: { onChanged: () => void }) {
+  const t = useT();
+  const [name, setName] = useState('');
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [notice, setNotice] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    apiMe()
+      .then(({ user }) => setName(user.name))
+      .catch(() => {
+        /* the portal above already handles a lost session */
+      });
+  }, []);
+
+  const say = (message: string) => {
+    setNotice(message);
+    setError('');
+  };
+  const fail = (message: string) => {
+    setError(message);
+    setNotice('');
+  };
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <h2>{t.portal.account}</h2>
+      </div>
+
+      <form
+        className="row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          apiRenameSelf(name.trim())
+            .then(onChanged)
+            .catch(() => fail(t.portal.orgFailed));
+        }}
+      >
+        <label className="grow">
+          {t.portal.yourName}
+          <input value={name} onChange={(e) => setName(e.target.value)} required />
+        </label>
+        <button type="submit">{t.portal.saveName}</button>
+      </form>
+
+      <form
+        className="row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          apiChangePassword(current, next)
+            .then(() => {
+              setCurrent('');
+              setNext('');
+              say(t.portal.passwordChanged);
+            })
+            .catch((err) => {
+              if (err instanceof ApiError && err.status === 403) fail(t.portal.passwordWrong);
+              else if (err instanceof ApiError && err.code === 'weak-password')
+                fail(t.auth.weakPassword);
+              else fail(t.portal.orgFailed);
+            });
+        }}
+      >
+        <label className="grow">
+          {t.portal.currentPassword}
+          <input
+            type="password"
+            value={current}
+            onChange={(e) => setCurrent(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+        </label>
+        <label className="grow">
+          {t.portal.newPassword}
+          <input
+            type="password"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+            autoComplete="new-password"
+            required
+          />
+        </label>
+        <button type="submit">{t.portal.changePassword}</button>
+      </form>
+
+      <button
+        type="button"
+        className="danger"
+        onClick={() => {
+          if (!window.confirm(t.portal.closeConfirm)) return;
+          apiCloseAccount()
+            .then(() => {
+              window.location.reload();
+            })
+            .catch(async (err) => {
+              // The server refuses while any organisation would be left without an owner, and
+              // names them — repeating that is more use than "not allowed".
+              if (err instanceof ApiError && err.code === 'sole-owner') {
+                fail(fill(t.portal.closeBlocked, { orgs: t.portal.orgSettings }));
+              } else fail(t.portal.orgFailed);
+            });
+        }}
+      >
+        {t.portal.closeAccount}
+      </button>
+
+      {notice ? <p className="muted small">{notice}</p> : null}
       {error ? <p className="error">{error}</p> : null}
     </section>
   );

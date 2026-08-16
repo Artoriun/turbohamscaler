@@ -90,6 +90,18 @@ export const en = {
   portal: {
     organisation: 'Organisation',
     orgSettings: 'Organisation',
+    account: 'Your account',
+    yourName: 'Your name',
+    saveName: 'Save',
+    currentPassword: 'Current password',
+    newPassword: 'New password',
+    changePassword: 'Change password',
+    passwordChanged: 'Password changed. Any other devices have been signed out.',
+    passwordWrong: 'That is not your current password.',
+    closeAccount: 'Close your account',
+    closeConfirm: 'Close your account? This cannot be undone.',
+    closeBlocked:
+      'You are the only owner of {orgs}. Make someone else an owner, or delete it, before closing your account.',
     orgName: 'Name',
     orgRename: 'Rename',
     orgDelete: 'Delete this organisation',

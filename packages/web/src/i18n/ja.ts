@@ -85,6 +85,18 @@ export const ja: Dictionary = {
   portal: {
     organisation: '組織',
     orgSettings: '組織',
+    account: 'アカウント',
+    yourName: '名前',
+    saveName: '保存',
+    currentPassword: '現在のパスワード',
+    newPassword: '新しいパスワード',
+    changePassword: 'パスワードを変更',
+    passwordChanged: 'パスワードを変更しました。他の端末はサインアウトされました。',
+    passwordWrong: '現在のパスワードが違います。',
+    closeAccount: 'アカウントを削除',
+    closeConfirm: 'アカウントを削除しますか？元に戻せません。',
+    closeBlocked:
+      '{orgs} の唯一のオーナーです。別のメンバーをオーナーにするか、組織を削除してから実行してください。',
     orgName: '名前',
     orgRename: '名前を変更',
     orgDelete: 'この組織を削除',
