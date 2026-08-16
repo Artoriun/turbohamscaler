@@ -4,6 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>TurboHamscaler</title>
+    <!-- Named explicitly rather than relying on the browser's guess. Without a link the
+         browser asks the origin root for /favicon.ico, which under a project subpath is not
+         this site at all — it 404s, and that failure is logged to the console. -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="description" content="A TurboRepo starter for a multi-tenant web app." />
   </head>
   <body>

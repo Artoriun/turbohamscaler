@@ -29,12 +29,26 @@ test('the built portal boots and reaches the API', async ({ page }) => {
   expect(failed, 'unexpected failed requests').toEqual([]);
 });
 
-test('an unknown path still serves the app rather than a host 404', async ({ page }) => {
-  // A single-page app needs the static host to fall back to index.html; without it a deep
-  // link works in dev and 404s in production, which is the classic SPA deploy bug.
+test('an unknown path renders the app but answers 404', async ({ page }) => {
+  // Both halves matter and they pull in opposite directions. The app has to boot, or a deep
+  // link that exists only client-side would show the host's own error page. The *status* still
+  // has to be 404, because that is the only thing telling a crawler the page is not real —
+  // and it is what GitHub Pages sends. Serving 200 here once hid a live console error.
   const res = await page.goto('/no-such-page');
-  expect(res?.status()).toBe(200);
+  expect(res?.status()).toBe(404);
   await expect(page.getByRole('heading', { name: 'Nothing here' })).toBeVisible();
+});
+
+test('the icon is a real file, so nothing asks the origin root for one', async ({ page }) => {
+  // With no <link rel="icon"> a browser asks the origin for /favicon.ico. Under a project
+  // subpath that is not this site, so it 404s and the failure is logged to the console —
+  // which Lighthouse counts against best-practices.
+  const html = await (await page.request.get('/')).text();
+  expect(html).toMatch(/<link rel="icon"[^>]*href="[^"]*favicon\.ico"/);
+
+  const icon = await page.request.get('/favicon.ico');
+  expect(icon.status()).toBe(200);
+  expect(icon.headers()['content-type']).toContain('image');
 });
 
 test('the public pages carry their text without any JavaScript', async ({ browser, baseURL }) => {
