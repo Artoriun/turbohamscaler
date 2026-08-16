@@ -50,10 +50,20 @@
     drop-shadow(0 0 11px color-mix(in srgb, var(--accent) 35%, transparent));
 }
 
+/* <picture> exists only to let the browser choose between the animation and a still frame; it
+   has no visual job. Left as a box it would become the flex item in .brand and the grid item in
+   the hero, and the alignment those rely on would apply to the wrapper instead of the image.
+   display: contents removes the wrapper from layout so the <img> stays the item being aligned. */
+picture {
+  display: contents;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mascot {
     animation: none;
   }
+  /* The GIFs are handled by <picture> in Mascot.tsx, not here — animation: none has no effect
+     on an animated GIF, so a rule for them at this layer would be a comforting no-op. */
 }
 
 @keyframes hamster-idle {

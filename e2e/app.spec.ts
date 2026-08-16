@@ -156,3 +156,50 @@ test('Japanese lives at its own path, and the switcher navigates there', async (
   await expect(page).toHaveURL(/\/app$/);
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 });
+
+test('a reduced-motion visitor gets a still frame instead of the flashing mascot', async ({
+  browser,
+  baseURL,
+}) => {
+  // The evolution is a white flash, and the site's CSS cannot switch it off — `animation: none`
+  // does nothing to an animated GIF. <picture> is what actually honours the preference, and
+  // currentSrc is the only way to see which source the browser really chose.
+  for (const [reducedMotion, expected] of [
+    ['reduce', '.png'],
+    ['no-preference', '.gif'],
+  ] as const) {
+    const context = await browser.newContext({ reducedMotion, baseURL });
+    const page = await context.newPage();
+    await page.goto('/');
+
+    const hero = await page
+      .locator('.hero-mascot')
+      .evaluate((el: HTMLImageElement) => el.currentSrc);
+    const brand = await page
+      .locator('.brand-mark')
+      .evaluate((el: HTMLImageElement) => el.currentSrc);
+
+    expect(hero, `hero mascot under reducedMotion=${reducedMotion}`).toContain(expected);
+    expect(brand, `header mark under reducedMotion=${reducedMotion}`).toContain(expected);
+
+    await context.close();
+  }
+});
+
+test('leaving the portal keeps the language you were reading', async ({ page }) => {
+  // Same no-API simulation as above: that screen is what the static deploy always shows, and
+  // its button is the only way out of the portal a signed-out visitor gets.
+  await page.route('**/api/**', (route) =>
+    route.fulfill({
+      status: 404,
+      contentType: 'text/html',
+      body: '<!doctype html><title>404</title>',
+    }),
+  );
+  await page.goto('/ja/app');
+  // Hardcoding "/" here dropped a Japanese reader on the English overview with nothing on the
+  // page they landed on saying why, or how to get back.
+  await page.getByRole('link', { name: '概要に戻る' }).click();
+  await expect(page).toHaveURL(/\/ja$/);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+});

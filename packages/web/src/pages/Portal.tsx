@@ -1,8 +1,8 @@
 import { APP_NAME, type OrganisationMembership, type Project, type Role } from '@hamscaler/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import mark from '../assets/turboham-mark.gif';
 import LanguageToggle from '../components/LanguageToggle';
+import Mascot from '../components/Mascot';
 import ThemeToggle from '../components/ThemeToggle';
 import { fill, pathFor, resolveLang, useT } from '../i18n';
 import {
@@ -35,6 +35,10 @@ export default function Portal() {
   const [orgId, setOrgId] = useState('');
   const [loading, setLoading] = useState(true);
   const [hasApi, setHasApi] = useState(true);
+  // Both ways out of the portal have to keep the reader's language. Hardcoding "/" sent someone
+  // reading /ja/app to the English overview, which is a one-way door: nothing on the page they
+  // land on tells them they were switched, or how to get back.
+  const home = pathFor(resolveLang(useLocation().pathname), '/');
 
   const load = useCallback(async () => {
     try {
@@ -99,8 +103,8 @@ export default function Portal() {
     <>
       <header className="topbar">
         <div className="topbar-inner">
-          <Link className="brand" to="/" aria-label={APP_NAME}>
-            <img className="brand-mark" src={mark} width={48} height={32} alt="" />
+          <Link className="brand" to={home} aria-label={APP_NAME}>
+            <Mascot art="mark" className="brand-mark" width={48} height={32} alt="" />
             <span className="brand-name">{APP_NAME}</span>
           </Link>
           <label className="org-picker">
@@ -163,6 +167,7 @@ export default function Portal() {
  */
 function NoApi() {
   const t = useT();
+  const home = pathFor(resolveLang(useLocation().pathname), '/');
   return (
     <main className="centre">
       <section className="panel auth">
@@ -173,7 +178,7 @@ function NoApi() {
         <pre>
           <code>{'npm install\nnpm run db:seed\nnpm run dev'}</code>
         </pre>
-        <Link className="button" to="/">
+        <Link className="button" to={home}>
           {t.portal.backToOverview}
         </Link>
       </section>
