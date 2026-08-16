@@ -7,6 +7,7 @@
  */
 
 import type {
+  Invitation,
   Organisation,
   OrganisationMembership,
   Project,
@@ -35,16 +36,22 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json', ...init.headers },
   });
-  if (res.status === 401) {
-    // One event, not a throw at every call site: the app listens in one place and swaps in the
-    // sign-in form rather than each screen inventing its own handling.
-    window.dispatchEvent(new Event(SIGNED_OUT_EVENT));
-    throw new ApiError(401, 'not-signed-in');
-  }
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
+    // One event, not a throw at every call site: the app listens in one place and swaps in the
+    // sign-in form rather than each screen inventing its own handling.
+    //
+    // Not for /api/auth, though. A 401 there means "those credentials are wrong", not "your
+    // session ended" — announcing the end of a session that never started tears down the form
+    // the message was about to appear in. The code from the body is kept for the same reason:
+    // flattening every 401 to 'not-signed-in' threw away the server's actual answer.
+    if (res.status === 401 && !path.startsWith('/api/auth/')) {
+      window.dispatchEvent(new Event(SIGNED_OUT_EVENT));
+    }
     throw new ApiError(res.status, body.error ?? `http-${res.status}`);
   }
+  // 204 carries no body, and asking for one throws. Revoking an invitation answers this way.
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
@@ -76,4 +83,28 @@ export const apiDeleteProject = (orgId: string, id: string) =>
 export const apiMembers = (orgId: string) =>
   call<{ members: (User & { role: Role })[] }>(`/api/orgs/${orgId}/members`);
 
-export type { Organisation, OrganisationMembership, Project, Session };
+export const apiInvitations = (orgId: string) =>
+  call<{ invitations: Invitation[] }>(`/api/orgs/${orgId}/invitations`);
+
+/**
+ * The token comes back exactly once, here. It is not stored, so there is no second chance to
+ * read it — the caller has to hand it over now.
+ */
+export const apiInvite = (orgId: string, email: string, role: Role) =>
+  call<{ invitation: Invitation; token: string }>(`/api/orgs/${orgId}/invitations`, {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  });
+
+export const apiRevokeInvitation = (orgId: string, id: string) =>
+  call<void>(`/api/orgs/${orgId}/invitations/${id}`, { method: 'DELETE' });
+
+export const apiOpenInvitation = (token: string) =>
+  call<{ invitation: Invitation; organisation: Organisation }>(`/api/invitations/${token}`);
+
+export const apiAcceptInvitation = (token: string) =>
+  call<{ organisations: OrganisationMembership[] }>(`/api/invitations/${token}/accept`, {
+    method: 'POST',
+  });
+
+export type { Invitation, Organisation, OrganisationMembership, Project, Session };

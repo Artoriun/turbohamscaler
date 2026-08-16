@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
 import { ROUTE_MANIFEST } from './app.ts';
-import { type Actor, as, type Harness, signUp, startApi } from './testing/harness.ts';
+import { type Actor, as, type Harness, invite, signUp, startApi } from './testing/harness.ts';
 
 /**
  * Every route, checked against every caller who should not be able to use it.
@@ -25,10 +25,7 @@ before(async () => {
 
   // plainMember joins the owner's organisation with the lowest role, which is what makes the
   // "authenticated, a member, but not privileged enough" case testable.
-  await as(owner)(`${api.base}/api/orgs/${owner.orgId}/members`, {
-    method: 'POST',
-    body: JSON.stringify({ email: plainMember.email, role: 'member' }),
-  });
+  await invite(api.base, owner, plainMember, 'member');
 
   const res = await as(owner)(`${api.base}/api/orgs/${owner.orgId}/projects`, {
     method: 'POST',
@@ -41,8 +38,13 @@ after(async () => {
   await api.close();
 });
 
+// `:token` stands in for one that does not exist. Every invitation route is checked here for
+// who may call it at all; whether a real token works is invitations.test.ts's job.
 const url = (path: string, orgId: string) =>
-  `${api.base}${path.replace(':orgId', orgId).replace(':id', projectId)}`;
+  `${api.base}${path
+    .replace(':orgId', orgId)
+    .replace(':token', 'not-a-real-token')
+    .replace(':id', projectId)}`;
 
 describe('anonymous callers', () => {
   for (const route of ROUTE_MANIFEST.filter((r) => r.auth !== 'anonymous')) {

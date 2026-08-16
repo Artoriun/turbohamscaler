@@ -1,17 +1,23 @@
+import type { Invitation, Organisation } from '@hamscaler/shared';
 import { APP_NAME, type OrganisationMembership, type Project, type Role } from '@hamscaler/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import LanguageToggle from '../components/LanguageToggle';
 import Mascot from '../components/Mascot';
 import ThemeToggle from '../components/ThemeToggle';
 import { fill, pathFor, resolveLang, useT } from '../i18n';
 import {
   ApiError,
+  apiAcceptInvitation,
   apiCreateProject,
   apiDeleteProject,
+  apiInvitations,
+  apiInvite,
   apiMe,
   apiMembers,
+  apiOpenInvitation,
   apiProjects,
+  apiRevokeInvitation,
   apiSignIn,
   apiSignOut,
   apiSignUp,
@@ -138,6 +144,7 @@ export default function Portal() {
       </header>
 
       <main className="page">
+        <AcceptInvitation onJoined={load} />
         {org ? (
           <>
             <div className="page-head">
@@ -150,7 +157,7 @@ export default function Portal() {
             </div>
             <div className="columns">
               <Projects orgId={org.id} canDelete={org.role !== 'member'} />
-              <Members orgId={org.id} />
+              <Members orgId={org.id} canInvite={org.role !== 'member'} />
             </div>
           </>
         ) : null}
@@ -183,6 +190,93 @@ function NoApi() {
         </Link>
       </section>
     </main>
+  );
+}
+
+/**
+ * Shown when the portal is opened with ?invite=… on the URL — the link an admin hands out.
+ *
+ * Deliberately a prompt rather than an automatic join: arriving at a link should not silently
+ * change which organisations you belong to. The token is dropped from the address bar either
+ * way, so a refresh or a shared URL does not carry it any further.
+ */
+function AcceptInvitation({ onJoined }: { onJoined: () => void }) {
+  const t = useT();
+  const [params, setParams] = useSearchParams();
+  const token = params.get('invite');
+  const [offer, setOffer] = useState<{ invitation: Invitation; organisation: Organisation } | null>(
+    null,
+  );
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const dismiss = useCallback(() => {
+    const next = new URLSearchParams(params);
+    next.delete('invite');
+    setParams(next, { replace: true });
+    setOffer(null);
+  }, [params, setParams]);
+
+  useEffect(() => {
+    if (!token) return;
+    let live = true;
+    apiOpenInvitation(token)
+      .then((o) => {
+        if (live) setOffer(o);
+      })
+      .catch(() => {
+        if (live) setError(t.portal.joinGone);
+      });
+    return () => {
+      live = false;
+    };
+  }, [token, t.portal.joinGone]);
+
+  if (!token) return null;
+  if (error) {
+    return (
+      <section className="panel notice">
+        <p>{error}</p>
+        <button type="button" className="ghost" onClick={dismiss}>
+          {t.portal.joinDecline}
+        </button>
+      </section>
+    );
+  }
+  if (!offer) return null;
+
+  return (
+    <section className="panel notice">
+      <h2>{fill(t.portal.joinHeading, { org: offer.organisation.name })}</h2>
+      <p className="muted">{fill(t.portal.joinBody, { role: offer.invitation.role })}</p>
+      <div className="row">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await apiAcceptInvitation(token);
+              dismiss();
+              onJoined();
+            } catch (err) {
+              setError(
+                err instanceof ApiError && err.status === 403
+                  ? t.portal.joinWrongAccount
+                  : t.portal.joinGone,
+              );
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? t.auth.working : t.portal.joinAccept}
+        </button>
+        <button type="button" className="ghost" onClick={dismiss}>
+          {t.portal.joinDecline}
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -357,7 +451,7 @@ function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
   );
 }
 
-function Members({ orgId }: { orgId: string }) {
+function Members({ orgId, canInvite }: { orgId: string; canInvite: boolean }) {
   const t = useT();
   const [members, setMembers] = useState<{ id: string; name: string; email: string; role: Role }[]>(
     [],
@@ -391,6 +485,148 @@ function Members({ orgId }: { orgId: string }) {
         ))}
       </ul>
       <p className="muted small">{t.portal.rolesNote}</p>
+      {canInvite ? <Invitations orgId={orgId} /> : null}
     </section>
+  );
+}
+
+/**
+ * Outstanding invitations, and the form that makes one.
+ *
+ * The token is rendered once, from the reply that created it. Nothing re-reads it, because
+ * nothing can: the server keeps only its hash.
+ */
+function Invitations({ orgId }: { orgId: string }) {
+  const t = useT();
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<Role>('member');
+  const [link, setLink] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    apiInvitations(orgId)
+      .then(({ invitations: list }) => setInvitations(list))
+      // Signing out cancels nothing already in flight, and this request answers 401 once the
+      // session is gone. Unhandled, that rejection reaches the page as an uncaught error.
+      // Only that case is swallowed — anything else still surfaces.
+      .catch((err) => {
+        if (!(err instanceof ApiError) || err.status !== 401) throw err;
+      });
+  }, [orgId]);
+
+  useEffect(load, [load]);
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    setCopied(false);
+    try {
+      const { token } = await apiInvite(orgId, email.trim(), role);
+      // Where the invitee lands. BASE_URL keeps it right under a project subpath.
+      setLink(`${window.location.origin}${import.meta.env.BASE_URL}app?invite=${token}`);
+      setEmail('');
+      load();
+    } catch (err) {
+      setError(
+        err instanceof ApiError && err.status === 409
+          ? t.portal.inviteTaken
+          : t.portal.inviteBadAddress,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="invites">
+      <div className="panel-head">
+        <h3>{t.portal.invitations}</h3>
+        <span className="count">{invitations.filter((i) => !i.acceptedAt).length}</span>
+      </div>
+
+      <form className="row" onSubmit={submit}>
+        <label className="sr-only" htmlFor="invite-email">
+          {t.portal.inviteEmail}
+        </label>
+        <input
+          id="invite-email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder={t.portal.inviteEmail}
+          required
+        />
+        <label className="sr-only" htmlFor="invite-role">
+          {t.portal.inviteRole}
+        </label>
+        <select id="invite-role" value={role} onChange={(e) => setRole(e.target.value as Role)}>
+          <option value="member">member</option>
+          <option value="admin">admin</option>
+        </select>
+        <button type="submit" disabled={busy}>
+          {busy ? t.auth.working : t.portal.inviteAction}
+        </button>
+      </form>
+      <p className="muted small">{t.portal.inviteNote}</p>
+      {error ? <p className="error">{error}</p> : null}
+
+      {link ? (
+        <div className="invite-token">
+          <strong>{t.portal.inviteTokenHeading}</strong>
+          <code>{link}</code>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => {
+              void navigator.clipboard?.writeText(link);
+              setCopied(true);
+            }}
+          >
+            {copied ? t.portal.inviteCopied : t.portal.inviteCopy}
+          </button>
+          <p className="muted small">{t.portal.inviteTokenNote}</p>
+        </div>
+      ) : null}
+
+      {invitations.length === 0 ? (
+        <p className="muted small">{t.portal.inviteNone}</p>
+      ) : (
+        <ul className="list">
+          {invitations.map((i) => (
+            <li key={i.id}>
+              <div className="grow">
+                <span className="title">{i.email}</span>
+                <span className="meta">
+                  {i.acceptedAt
+                    ? null
+                    : i.expiresAt < Date.now()
+                      ? t.portal.inviteExpired
+                      : t.portal.invitePending}
+                </span>
+              </div>
+              <RoleBadge role={i.role} />
+              {i.acceptedAt ? null : (
+                <button
+                  type="button"
+                  className="ghost"
+                  aria-label={fill(t.portal.inviteRevokeNamed, { email: i.email })}
+                  onClick={() => {
+                    apiRevokeInvitation(orgId, i.id)
+                      .then(load)
+                      .catch(() => setInvitations((prev) => prev));
+                  }}
+                >
+                  {t.portal.inviteRevoke}
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

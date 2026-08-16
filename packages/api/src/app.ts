@@ -7,8 +7,8 @@
  * unprotected" is a build failure rather than something noticed later.
  */
 
-import { randomUUID } from 'node:crypto';
-import { LIMITS, MIN_PASSWORD_LENGTH, type Role } from '@hamscaler/shared';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { INVITE_TTL_SECONDS, LIMITS, MIN_PASSWORD_LENGTH, type Role } from '@hamscaler/shared';
 import cookieParser from 'cookie-parser';
 import express, { type Express } from 'express';
 import {
@@ -23,19 +23,43 @@ import { clearSessionCookie, setSessionCookie } from './cookies.ts';
 import { type AuthedRequest, param, requireOrg, requireUser } from './middleware.ts';
 import {
   addMember,
+  createInvitation,
   createOrganisation,
   createProject,
   createUser,
   deleteProject,
+  findInvitationByTokenHash,
   findUserByEmail,
   findUserById,
   getProject,
+  listInvitations,
   listProjects,
+  markInvitationAccepted,
   membersOf,
+  organisationById,
   organisationsFor,
+  revokeInvitation,
+  roleIn,
   updateProject,
 } from './repo.ts';
 import { clearAttempts, recordAttempt } from './signInAttempts.ts';
+
+const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
+
+/**
+ * The invitation a token opens, or null when it is unknown, spent or out of date.
+ *
+ * One place decides that, so "expired" cannot be handled in the preview and forgotten in the
+ * accept — which is the shape this kind of bug takes.
+ */
+const openInvitation = (token: string | undefined) => {
+  if (!token) return null;
+  const invitation = findInvitationByTokenHash(hashToken(token));
+  if (!invitation) return null;
+  if (invitation.acceptedAt !== null) return null;
+  if (invitation.expiresAt < Date.now()) return null;
+  return invitation;
+};
 
 const slugify = (s: string) =>
   s
@@ -144,20 +168,99 @@ export function createApp(): Express {
     res.json({ members: membersOf((req as AuthedRequest).orgId as string) });
   });
 
-  app.post('/api/orgs/:orgId/members', requireUser, requireOrg('admin'), (req, res) => {
+  // ── invitations ───────────────────────────────────────────────────────────────────────
+  //
+  // This replaced a POST /members that took an address, looked the user up, and answered 404
+  // "no-such-user" when nobody held it. Two faults in one route: it added people to an
+  // organisation without asking them, and it answered "is this address registered?" for any
+  // address — the question sign-in refuses to answer, since it returns the same 401 whether
+  // the address is unknown or the password was wrong.
+  //
+  // Nothing below ever looks in the users table, so there is no answer to leak.
+
+  app.post('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), (req, res) => {
     const { email, role } = req.body ?? {};
-    if (typeof email !== 'string' || !['member', 'admin'].includes(role)) {
+    if (typeof email !== 'string' || !email.includes('@') || !['member', 'admin'].includes(role)) {
       res.status(400).json({ error: 'invalid-details' });
       return;
     }
-    const user = findUserByEmail(email);
-    if (!user) {
-      res.status(404).json({ error: 'no-such-user' });
+    const orgId = (req as AuthedRequest).orgId as string;
+    const token = randomBytes(32).toString('base64url');
+    try {
+      const invitation = createInvitation(
+        orgId,
+        email,
+        role as Role,
+        (req as AuthedRequest).userId as string,
+        hashToken(token),
+        INVITE_TTL_SECONDS,
+      );
+      // The only time the token leaves the server. There is no mail sender in this starter, so
+      // the caller is responsible for delivering it; wire one in here and stop returning it.
+      res.status(201).json({ invitation, token });
+    } catch {
+      // The partial unique index rejects a second outstanding invitation for the same address.
+      res.status(409).json({ error: 'already-invited' });
+    }
+  });
+
+  app.get('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), (req, res) => {
+    res.json({ invitations: listInvitations((req as AuthedRequest).orgId as string) });
+  });
+
+  app.delete('/api/orgs/:orgId/invitations/:id', requireUser, requireOrg('admin'), (req, res) => {
+    const id = param(req, 'id');
+    const orgId = (req as AuthedRequest).orgId as string;
+    if (!id || !revokeInvitation(orgId, id)) {
+      res.status(404).json({ error: 'not-found' });
       return;
     }
-    const orgId = (req as AuthedRequest).orgId as string;
-    addMember(orgId, user.id, role as Role);
-    res.status(201).json({ members: membersOf(orgId) });
+    res.status(204).end();
+  });
+
+  /**
+   * What an invitation is for, so the client can say "join X as an admin?" before acting.
+   *
+   * Behind a session deliberately: an anonymous endpoint here would let anyone guessing tokens
+   * harvest organisation names. Holding a token is not the same as being allowed to read it.
+   */
+  app.get('/api/invitations/:token', requireUser, (req, res) => {
+    const invitation = openInvitation(param(req, 'token'));
+    if (!invitation) {
+      res.status(404).json({ error: 'no-such-invitation' });
+      return;
+    }
+    const org = organisationById(invitation.orgId);
+    res.json({ invitation, organisation: org });
+  });
+
+  app.post('/api/invitations/:token/accept', requireUser, (req, res) => {
+    const invitation = openInvitation(param(req, 'token'));
+    if (!invitation) {
+      res.status(404).json({ error: 'no-such-invitation' });
+      return;
+    }
+    const userId = (req as AuthedRequest).userId as string;
+    const user = findUserById(userId);
+    // Addressed to a person, not to whoever ends up holding the link. Without this a forwarded
+    // invitation is a way into someone else's organisation.
+    if (!user || user.email.toLowerCase() !== invitation.email.toLowerCase()) {
+      res.status(403).json({ error: 'wrong-account' });
+      return;
+    }
+    if (roleIn(invitation.orgId, userId)) {
+      markInvitationAccepted(invitation.orgId, invitation.id);
+      res.status(200).json({ organisations: organisationsFor(userId) });
+      return;
+    }
+    // Single-use: the write only touches a row that has not been accepted, so two requests
+    // racing produce one membership and one 404 rather than two memberships.
+    if (!markInvitationAccepted(invitation.orgId, invitation.id)) {
+      res.status(404).json({ error: 'no-such-invitation' });
+      return;
+    }
+    addMember(invitation.orgId, userId, invitation.role);
+    res.status(201).json({ organisations: organisationsFor(userId) });
   });
 
   // ── projects (tenant-owned) ────────────────────────────────────────────────────────────
@@ -237,7 +340,11 @@ export const ROUTE_MANIFEST: RouteSpec[] = [
   { method: 'post', path: '/api/auth/sign-out-everywhere', auth: 'user' },
   { method: 'get', path: '/api/me', auth: 'user' },
   { method: 'get', path: '/api/orgs/:orgId/members', auth: 'member' },
-  { method: 'post', path: '/api/orgs/:orgId/members', auth: 'admin' },
+  { method: 'post', path: '/api/orgs/:orgId/invitations', auth: 'admin' },
+  { method: 'get', path: '/api/orgs/:orgId/invitations', auth: 'admin' },
+  { method: 'delete', path: '/api/orgs/:orgId/invitations/:id', auth: 'admin' },
+  { method: 'get', path: '/api/invitations/:token', auth: 'user' },
+  { method: 'post', path: '/api/invitations/:token/accept', auth: 'user' },
   { method: 'get', path: '/api/orgs/:orgId/projects', auth: 'member' },
   { method: 'post', path: '/api/orgs/:orgId/projects', auth: 'member' },
   { method: 'get', path: '/api/orgs/:orgId/projects/:id', auth: 'member' },
