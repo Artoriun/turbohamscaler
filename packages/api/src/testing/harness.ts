@@ -16,6 +16,15 @@ export interface Harness {
 }
 
 export async function startApi(): Promise<Harness> {
+  // Point the suite at an API that is already running, instead of starting one here. That is
+  // how the same tests are run against the Worker (`npm run test:api:worker`): the assertions
+  // are about the API's behaviour, and behaviour is exactly what should not depend on which
+  // runtime is serving it.
+  const external = process.env.API_BASE;
+  if (external) {
+    return { base: external.replace(/\/$/, ''), close: async () => {} };
+  }
+
   process.env.DATABASE_URL = ':memory:';
   closeDb();
   await migrate(() => {});
@@ -44,11 +53,23 @@ export interface Actor {
 }
 
 /** Signs a new user up, which also creates the organisation they own. */
+/**
+ * Makes an address unique to this run.
+ *
+ * The suites used to rely on starting against an empty in-memory database, so fixed addresses
+ * were safe. Running them against a Worker's D1 breaks that assumption — the database outlives
+ * the process — and a second run would collide on every sign-up. Uniquifying here rather than
+ * in each test keeps the tests readable and makes them independent of what is already stored.
+ */
+const RUN = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+export const unique = (address: string) => address.replace('@', `+${RUN}@`);
+
 export async function signUp(
   base: string,
-  email: string,
+  address: string,
   password = 'correct-horse-battery',
 ): Promise<Actor> {
+  const email = unique(address);
   const res = await fetch(`${base}/api/auth/sign-up`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { after, before, describe, test } from 'node:test';
-import { type Actor, as, type Harness, signUp, startApi } from './testing/harness.ts';
+import { type Actor, as, type Harness, signUp, startApi, unique } from './testing/harness.ts';
 
 /**
  * Joining an organisation you did not create.
@@ -35,8 +35,8 @@ const inviteAs = (actor: Actor, orgId: string, email: string, role = 'member') =
 
 describe('inviting', () => {
   test('says nothing about whether the address has an account', async () => {
-    const registered = await inviteAs(owner, owner.orgId, 'guest@example.com');
-    const unknown = await inviteAs(owner, owner.orgId, 'nobody-at-all@example.com');
+    const registered = await inviteAs(owner, owner.orgId, guest.email);
+    const unknown = await inviteAs(owner, owner.orgId, unique('nobody-at-all@example.com'));
 
     assert.equal(registered.status, 201);
     assert.equal(
@@ -54,12 +54,12 @@ describe('inviting', () => {
   });
 
   test('refuses a second outstanding invitation for the same address', async () => {
-    const again = await inviteAs(owner, owner.orgId, 'guest@example.com');
+    const again = await inviteAs(owner, owner.orgId, guest.email);
     assert.equal(again.status, 409);
   });
 
   test('a plain member may not invite', async () => {
-    const res = await inviteAs(outsider, outsider.orgId, 'someone@example.com', 'nonsense');
+    const res = await inviteAs(outsider, outsider.orgId, unique('someone@example.com'), 'nonsense');
     assert.equal(res.status, 400, 'an unknown role is rejected before anything is written');
   });
 });
@@ -71,7 +71,7 @@ describe('accepting', () => {
     const list = await as(owner)(`${api.base}/api/orgs/${owner.orgId}/invitations`);
     const { invitations } = (await list.json()) as { invitations: { email: string }[] };
     assert.ok(
-      invitations.some((i) => i.email === 'guest@example.com'),
+      invitations.some((i) => i.email === guest.email),
       'the invitation should be listed for the organisation that issued it',
     );
 
@@ -82,7 +82,7 @@ describe('accepting', () => {
           (await (await as(owner)(`${api.base}/api/orgs/${owner.orgId}/invitations`)).json()) as {
             invitations: { id: string; email: string }[];
           }
-        ).invitations.find((i) => i.email === 'guest@example.com')?.id
+        ).invitations.find((i) => i.email === guest.email)?.id
       }`,
       { method: 'DELETE' },
     );

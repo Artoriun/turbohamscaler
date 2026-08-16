@@ -51,6 +51,12 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      # The same assertions against the Worker and a local D1, so "runs on both runtimes" is
+      # something the build checks rather than something the README claims. Entirely local —
+      # wrangler runs on Miniflare, so this needs no Cloudflare account.
+      - name: API tests on Workers + D1
+        run: npm run test:api:worker
+
       - name: Build
         run: npm run build
 
