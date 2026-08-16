@@ -10,6 +10,12 @@ gives you a working app with a seeded demo tenant. TurboHam scales by adding whe
 
 [![CI](https://github.com/Artoriun/turbohamscaler/actions/workflows/ci.yml/badge.svg)](https://github.com/Artoriun/turbohamscaler/actions/workflows/ci.yml)
 
+> ## 🚧 Work in progress — do not build on this yet
+>
+> This starter is under active development. It is public so the work can be followed, not
+> because it is finished. The schema, the API and the layout of the packages will all change,
+> breakingly and without a migration path. Treat nothing here as settled.
+
 **Public pages:** https://artoriun.github.io/turbohamscaler/ — the app itself needs a server,
 so run it locally to sign in.
 
