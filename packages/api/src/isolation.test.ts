@@ -123,3 +123,34 @@ describe('the owner of an organisation', () => {
     );
   });
 });
+
+describe('sign-up', () => {
+  test('two people with the same name can both sign up', async () => {
+    // The slug carried `Date.now() % 10000`, which repeats every ten seconds: the second
+    // person with that name inside the window hit a UNIQUE constraint on organisations.slug
+    // and got a 500 instead of an account. Same name, different addresses, is the case.
+    const api2 = await startApi();
+    try {
+      const post = (email: string) =>
+        fetch(`${api2.base}/api/auth/sign-up`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name: 'Alex Taylor', password: 'correct-horse-battery' }),
+        });
+      // A burst, not two calls: `Date.now() % 10000` only repeats for sign-ups landing in the
+      // same millisecond, so two sequential requests almost never collide and a two-call test
+      // passes against the bug. Twenty in flight at once reliably do.
+      const results = await Promise.all(
+        Array.from({ length: 20 }, (_, i) => post(`alex${i}@example.com`)),
+      );
+      const statuses = results.map((r) => r.status);
+      assert.deepEqual(
+        statuses.filter((s) => s !== 201),
+        [],
+        'every sign-up sharing a name must get its own organisation slug',
+      );
+    } finally {
+      await api2.close();
+    }
+  });
+});
