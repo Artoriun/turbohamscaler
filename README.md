@@ -128,13 +128,24 @@ on every push to `main`. Set `BASE_PATH` at the top of `.github/workflows/ci.yml
 repository name, or `/` for a custom domain. A static host needs `404.html` to be the app
 itself, or a deep link never boots the router — the workflow copies `index.html` over it.
 
-**The app needs a server.** It is a plain Express app, so it fits the free tier of most hosts;
-point the front end at it with `VITE_API_URL` at build time. Served without one — as on the
-Pages deploy above — the portal says so rather than showing a sign-in form that cannot work.
+**The app needs a server.** It is a plain Express app and fits the free tier of most hosts;
+[`render.yaml`](render.yaml) is a working blueprint for one. Point the front end at it with
+`VITE_API_URL` at build time. Served without one — as on the Pages deploy above — the portal
+says so rather than showing a sign-in form that cannot work.
 
-`node:sqlite` writes to a local file, which suits a single instance. Past that, point
-`DATABASE_URL` at a hosted database and replace `packages/api/src/db/index.ts` — nothing above
-the query helpers imports a driver.
+**The pages and the API have to share a site.** The session cookie is `SameSite=Lax`, which is
+what makes it immune to cross-site request forgery without a token dance, and the price is that
+the browser will not send it on a cross-*site* request. `app.example.com` with
+`api.example.com` is fine; one origin serving both is fine. GitHub Pages with a separate host
+is not — different sites, so the cookie never arrives, which is why that deploy shows the
+"no API" screen instead. Splitting them for real means `SameSite=None; Secure` **and** CSRF
+tokens: a deliberate trade, not one to back into by setting `VITE_API_URL`.
+
+`node:sqlite` writes to a local file, which suits a single instance — and a free instance
+usually has no persistent disk, so the database is gone on every restart. Fine for a demo,
+wrong for anything real: attach a disk, or point `DATABASE_URL` at a hosted database and
+replace `packages/api/src/db/index.ts`, which nothing above the query helpers imports a driver
+through.
 
 **Node 22** is required (`.nvmrc`).
 

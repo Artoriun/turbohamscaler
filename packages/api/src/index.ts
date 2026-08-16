@@ -6,7 +6,12 @@
 import { createApp } from './app.ts';
 import { migrate } from './db/migrate.ts';
 
-const PORT = Number(process.env.API_PORT ?? 4410);
+/**
+ * PORT first: every managed host injects it and expects the process to bind exactly that,
+ * failing the health check otherwise. API_PORT stays the local knob, so `npm run dev` and the
+ * test harness keep choosing their own.
+ */
+const PORT = Number(process.env.PORT ?? process.env.API_PORT ?? 4410);
 
 migrate();
 createApp().listen(PORT, () => {
