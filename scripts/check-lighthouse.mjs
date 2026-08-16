@@ -38,15 +38,31 @@ const PORT = Number(process.env.LH_PORT ?? 3492);
 const CHROME_PATH = chromium.executablePath();
 
 /**
- * The public page, and the portal shell.
+ * What to audit, and what to hold each page to.
  *
- * The portal is worth auditing even without an API behind it: what it renders then is the
- * "no API behind this copy" screen, which is exactly what the Pages deploy shows every
- * visitor who opens the app.
+ * The portal is worth auditing even with no API behind it: what it renders then is the "no API
+ * behind this copy" screen, which is what the Pages deploy shows every visitor who opens it.
+ *
+ * It is the one page exempt from the console gate. Deciding whether an API exists is done by
+ * asking it (see Portal.tsx), so on a deploy without one that request 404s — and a browser
+ * logs every failed request, whoever asked for it. The alternative is a build-time flag
+ * someone has to remember to set, which is worse. The exemption is written down here rather
+ * than the gate being lowered for every page to accommodate it.
  */
-const ROUTES = ['', 'app'];
+const ROUTES = [
+  { path: '', gateConsole: true },
+  { path: 'app', gateConsole: false },
+];
 
 const THRESHOLDS = { accessibility: 100, seo: 100, 'best-practices': 100 };
+
+/**
+ * Audits worth failing on by name, separate from the category scores.
+ *
+ * A console error costs only a few points of best-practices, so a category threshold can be
+ * lowered past it without anyone deciding to. Naming it means the build says which thing broke.
+ */
+const MUST_PASS = ['errors-in-console'];
 const MAX_CLS = 0.05;
 
 if (!existsSync(join(DIST, 'index.html'))) {
@@ -62,7 +78,7 @@ await listen(server, PORT);
 
 let failed = false;
 try {
-  for (const route of ROUTES) {
+  for (const { path: route, gateConsole } of ROUTES) {
     const url = `http://localhost:${PORT}${BASE}${route}`;
     const out = join(ROOT, `lighthouse-${route || 'home'}.json`);
 
@@ -104,7 +120,26 @@ try {
       }
     }
 
+    for (const id of MUST_PASS) {
+      const audit = report.audits[id];
+      const ok = audit.score === null || audit.score >= 1;
+      console.log(
+        `    ${ok ? '✓' : gateConsole ? '✗' : '–'} ${id}${gateConsole ? '' : ' (not gated here)'}`,
+      );
+      if (ok || !gateConsole) continue;
+      failed = true;
+      for (const item of (audit.details?.items ?? []).slice(0, 5)) {
+        console.log(`        ${String(item.description ?? item.source).slice(0, 110)}`);
+      }
+    }
+
     for (const [id, min] of Object.entries(THRESHOLDS)) {
+      // best-practices is scored down by the same deliberate probe, so it is held to the same
+      // rule: gated where the console is, reported where it is not.
+      if (id === 'best-practices' && !gateConsole) {
+        console.log(`    – ${id} ${score(id)} (not gated here)`);
+        continue;
+      }
       const actual = score(id);
       const ok = actual >= min;
       console.log(`    ${ok ? '✓' : '✗'} ${id} ${actual} (min ${min})`);

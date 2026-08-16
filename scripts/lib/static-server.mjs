@@ -66,6 +66,7 @@ export function createStaticServer({ dist, basePath = '/', apiPort }) {
       return;
     }
 
+    let status = 200;
     let path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(
       /^(\.\.[/\\])+/,
       '',
@@ -82,12 +83,17 @@ export function createStaticServer({ dist, basePath = '/', apiPort }) {
       const indexed = join(file, 'index.html');
       file = existsSync(indexed) ? indexed : join(dist, 'index.html');
     } else if (!existsSync(file)) {
-      // The single-page-app fallback. 404.html is what a real host serves here; using it keeps
-      // this honest about what an unknown path actually returns.
+      // The single-page-app fallback, served with a real 404 like the host does.
+      //
+      // Answering 200 here hid a live defect: with no <link rel="icon">, browsers ask the
+      // origin for /favicon.ico, which 404s on the deploy and is logged to the console —
+      // costing four points of best-practices. Locally the fallback returned 200 and the same
+      // audit scored 100, so the gate passed on a page the real host fails.
+      status = 404;
       const fallback = join(dist, '404.html');
       file = existsSync(fallback) ? fallback : join(dist, 'index.html');
     }
-    res.writeHead(200, {
+    res.writeHead(status, {
       'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream',
       'Cache-Control': file.includes('/assets/')
         ? 'public, max-age=31536000, immutable'
