@@ -1,15 +1,28 @@
 /**
- * The database handle.
+ * The database handle, behind an interface with two implementations.
  *
- * `node:sqlite` ships with Node 22, so a fresh clone needs no native build step and no
- * account: `npm install && npm run dev` has a working database. Swapping to D1 or Postgres
- * means replacing this module and the query helpers in repo.ts — nothing above them imports a
- * driver directly, which is the point of routing every read and write through those helpers.
+ * `node:sqlite` ships with Node 22, so a fresh clone needs no native build and no account:
+ * `npm install && npm run dev` has a working database.
+ *
+ * The helpers below are **async**, and that is the whole point of this file. node:sqlite is
+ * synchronous and D1 is not, so sync helpers pinned the entire API to Node no matter how the
+ * driver was imported — every caller would have had to change to move hosts. Awaiting a
+ * synchronous driver costs a microtask and buys the ability to swap in D1 (see d1.ts) without
+ * touching repo.ts, the routes, or anything above them.
  */
 
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+
+/** What the rest of the API needs from a database. Implemented here and in d1.ts. */
+export interface Driver {
+  all<T>(sql: string, params: unknown[]): Promise<T[]>;
+  one<T>(sql: string, params: unknown[]): Promise<T | null>;
+  run(sql: string, params: unknown[]): Promise<number>;
+  /** Multiple statements at once, for migrations. */
+  exec(sql: string): Promise<void>;
+}
 
 /**
  * Where the database lives; `:memory:` in tests, so each run starts from a known empty one.
@@ -24,7 +37,7 @@ export function databaseUrl(): string {
 
 let handle: DatabaseSync | null = null;
 
-export function db(): DatabaseSync {
+function sqlite(): DatabaseSync {
   if (handle) return handle;
   const url = databaseUrl();
   if (url !== ':memory:') mkdirSync(dirname(url), { recursive: true });
@@ -36,6 +49,43 @@ export function db(): DatabaseSync {
   return handle;
 }
 
+/** The bundled driver: Node's own SQLite, wrapped to satisfy the async interface. */
+export const nodeSqliteDriver: Driver = {
+  async all<T>(sql: string, params: unknown[]): Promise<T[]> {
+    return sqlite()
+      .prepare(sql)
+      .all(...(params as never[])) as T[];
+  },
+  async one<T>(sql: string, params: unknown[]): Promise<T | null> {
+    const row = sqlite()
+      .prepare(sql)
+      .get(...(params as never[]));
+    return (row ?? null) as T | null;
+  },
+  async run(sql: string, params: unknown[]): Promise<number> {
+    return Number(
+      sqlite()
+        .prepare(sql)
+        .run(...(params as never[])).changes,
+    );
+  },
+  async exec(sql: string): Promise<void> {
+    sqlite().exec(sql);
+  },
+};
+
+let driver: Driver = nodeSqliteDriver;
+
+/**
+ * Swaps the driver. Called once at startup by a host that brings its own database.
+ *
+ * D1 arrives per-request as a binding on the environment rather than as a connection string,
+ * which is why this is a setter rather than something databaseUrl() could decide.
+ */
+export function setDriver(next: Driver): void {
+  driver = next;
+}
+
 /** Drops the cached handle. Tests use this between suites; nothing in the app does. */
 export function closeDb(): void {
   handle?.close();
@@ -43,24 +93,21 @@ export function closeDb(): void {
 }
 
 /** All rows, typed by the caller. */
-export function all<T>(sql: string, ...params: unknown[]): T[] {
-  return db()
-    .prepare(sql)
-    .all(...(params as never[])) as T[];
+export function all<T>(sql: string, ...params: unknown[]): Promise<T[]> {
+  return driver.all<T>(sql, params);
 }
 
 /** The first row, or null. */
-export function one<T>(sql: string, ...params: unknown[]): T | null {
-  const row = db()
-    .prepare(sql)
-    .get(...(params as never[]));
-  return (row ?? null) as T | null;
+export function one<T>(sql: string, ...params: unknown[]): Promise<T | null> {
+  return driver.one<T>(sql, params);
 }
 
-/** A write. Returns the number of rows changed. */
-export function run(sql: string, ...params: unknown[]): number {
-  const result = db()
-    .prepare(sql)
-    .run(...(params as never[]));
-  return Number(result.changes);
+/** A write. Resolves to the number of rows changed. */
+export function run(sql: string, ...params: unknown[]): Promise<number> {
+  return driver.run(sql, params);
+}
+
+/** Several statements at once. Migrations only. */
+export function exec(sql: string): Promise<void> {
+  return driver.exec(sql);
 }

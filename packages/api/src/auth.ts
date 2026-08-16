@@ -31,10 +31,10 @@ export interface SessionRow {
   expires_at: number;
 }
 
-export function createSession(userId: string): { id: string; expiresAt: number } {
+export async function createSession(userId: string): Promise<{ id: string; expiresAt: number }> {
   const id = randomUUID();
   const expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
-  run(
+  await run(
     'INSERT INTO sessions (id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)',
     id,
     userId,
@@ -50,11 +50,14 @@ export function createSession(userId: string): { id: string; expiresAt: number }
  * Expired rows are deleted on the way past rather than swept by a job: the read has already
  * found the row, and a session nobody presents costs one row until they do.
  */
-export function readSession(id: string): SessionRow | null {
-  const row = one<SessionRow>('SELECT id, user_id, expires_at FROM sessions WHERE id = ?', id);
+export async function readSession(id: string): Promise<SessionRow | null> {
+  const row = await one<SessionRow>(
+    'SELECT id, user_id, expires_at FROM sessions WHERE id = ?',
+    id,
+  );
   if (!row) return null;
   if (row.expires_at <= Date.now()) {
-    run('DELETE FROM sessions WHERE id = ?', id);
+    await run('DELETE FROM sessions WHERE id = ?', id);
     return null;
   }
   return row;
@@ -64,19 +67,19 @@ export function readSession(id: string): SessionRow | null {
  * Extends a session that is close to expiring, so somebody using the app is never signed out
  * mid-task. Returns the new expiry when it renewed, else null.
  */
-export function renewSession(row: SessionRow): number | null {
+export async function renewSession(row: SessionRow): Promise<number | null> {
   const remaining = (row.expires_at - Date.now()) / 1000;
   if (remaining > SESSION_RENEW_UNDER_SECONDS) return null;
   const expiresAt = Date.now() + SESSION_TTL_SECONDS * 1000;
-  run('UPDATE sessions SET expires_at = ? WHERE id = ?', expiresAt, row.id);
+  await run('UPDATE sessions SET expires_at = ? WHERE id = ?', expiresAt, row.id);
   return expiresAt;
 }
 
-export function destroySession(id: string): void {
-  run('DELETE FROM sessions WHERE id = ?', id);
+export async function destroySession(id: string): Promise<void> {
+  await run('DELETE FROM sessions WHERE id = ?', id);
 }
 
 /** Signs a user out everywhere — the recovery path when a device is lost or a token leaks. */
-export function destroyAllSessions(userId: string): number {
-  return run('DELETE FROM sessions WHERE user_id = ?', userId);
+export async function destroyAllSessions(userId: string): Promise<number> {
+  return await run('DELETE FROM sessions WHERE user_id = ?', userId);
 }

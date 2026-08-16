@@ -42,9 +42,9 @@ const toUser = (r: UserRow): User => ({
   createdAt: r.created_at,
 });
 
-export function createUser(email: string, name: string, passwordHash: string): User {
+export async function createUser(email: string, name: string, passwordHash: string): Promise<User> {
   const id = randomUUID();
-  run(
+  await run(
     'INSERT INTO users (id, email, email_key, name, password, created_at) VALUES (?, ?, ?, ?, ?, ?)',
     id,
     email,
@@ -56,22 +56,24 @@ export function createUser(email: string, name: string, passwordHash: string): U
   return { id, email, name, createdAt: now() };
 }
 
-export function findUserByEmail(email: string): (User & { password: string }) | null {
-  const row = one<UserRow>('SELECT * FROM users WHERE email_key = ?', email.toLowerCase());
+export async function findUserByEmail(
+  email: string,
+): Promise<(User & { password: string }) | null> {
+  const row = await one<UserRow>('SELECT * FROM users WHERE email_key = ?', email.toLowerCase());
   return row ? { ...toUser(row), password: row.password } : null;
 }
 
-export function findUserById(id: string): User | null {
-  const row = one<UserRow>('SELECT * FROM users WHERE id = ?', id);
+export async function findUserById(id: string): Promise<User | null> {
+  const row = await one<UserRow>('SELECT * FROM users WHERE id = ?', id);
   return row ? toUser(row) : null;
 }
 
 // ── organisations and membership ─────────────────────────────────────────────────────────
 
-export function createOrganisation(name: string, slug: string): Organisation {
+export async function createOrganisation(name: string, slug: string): Promise<Organisation> {
   const id = randomUUID();
   const createdAt = now();
-  run(
+  await run(
     'INSERT INTO organisations (id, name, slug, created_at) VALUES (?, ?, ?, ?)',
     id,
     name,
@@ -82,17 +84,17 @@ export function createOrganisation(name: string, slug: string): Organisation {
 }
 
 /** One organisation by id. Used to name the organisation an invitation is for. */
-export function organisationById(id: string): Organisation | null {
-  const row = one<{ id: string; name: string; slug: string; created_at: number }>(
+export async function organisationById(id: string): Promise<Organisation | null> {
+  const row = await one<{ id: string; name: string; slug: string; created_at: number }>(
     'SELECT id, name, slug, created_at FROM organisations WHERE id = ?',
     id,
   );
   return row ? { id: row.id, name: row.name, slug: row.slug, createdAt: row.created_at } : null;
 }
 
-export function addMember(orgId: string, userId: string, role: Role): Membership {
+export async function addMember(orgId: string, userId: string, role: Role): Promise<Membership> {
   const createdAt = now();
-  run(
+  await run(
     'INSERT INTO memberships (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)',
     orgId,
     userId,
@@ -108,20 +110,22 @@ export function addMember(orgId: string, userId: string, role: Role): Membership
  * This is the only place a user's reachable tenants are decided; every other query takes an
  * orgId that came from here, checked against this user.
  */
-export function organisationsFor(userId: string): OrganisationMembership[] {
-  return all<{ id: string; name: string; slug: string; created_at: number; role: Role }>(
-    `SELECT o.id, o.name, o.slug, o.created_at, m.role
+export async function organisationsFor(userId: string): Promise<OrganisationMembership[]> {
+  return (
+    await all<{ id: string; name: string; slug: string; created_at: number; role: Role }>(
+      `SELECT o.id, o.name, o.slug, o.created_at, m.role
        FROM organisations o
        JOIN memberships m ON m.org_id = o.id
       WHERE m.user_id = ?
       ORDER BY o.created_at`,
-    userId,
+      userId,
+    )
   ).map((r) => ({ id: r.id, name: r.name, slug: r.slug, createdAt: r.created_at, role: r.role }));
 }
 
 /** The role a user holds in an organisation, or null if they are not a member of it. */
-export function roleIn(orgId: string, userId: string): Role | null {
-  const row = one<{ role: Role }>(
+export async function roleIn(orgId: string, userId: string): Promise<Role | null> {
+  const row = await one<{ role: Role }>(
     'SELECT role FROM memberships WHERE org_id = ? AND user_id = ?',
     orgId,
     userId,
@@ -129,14 +133,16 @@ export function roleIn(orgId: string, userId: string): Role | null {
   return row?.role ?? null;
 }
 
-export function membersOf(orgId: string): (User & { role: Role })[] {
-  return all<UserRow & { role: Role }>(
-    `SELECT u.*, m.role
+export async function membersOf(orgId: string): Promise<(User & { role: Role })[]> {
+  return (
+    await all<UserRow & { role: Role }>(
+      `SELECT u.*, m.role
        FROM users u
        JOIN memberships m ON m.user_id = u.id
       WHERE m.org_id = ?
       ORDER BY m.created_at`,
-    orgId,
+      orgId,
+    )
   ).map((r) => ({ ...toUser(r), role: r.role }));
 }
 
@@ -146,22 +152,27 @@ export function membersOf(orgId: string): (User & { role: Role })[] {
  * Every removal and demotion is checked against this. An organisation with no owner is one
  * nobody can administer any more — not a state to arrive at by removing one person too many.
  */
-export function ownerCount(orgId: string): number {
-  const row = one<{ n: number }>(
+export async function ownerCount(orgId: string): Promise<number> {
+  const row = await one<{ n: number }>(
     "SELECT COUNT(*) AS n FROM memberships WHERE org_id = ? AND role = 'owner'",
     orgId,
   );
   return row?.n ?? 0;
 }
 
-export function setMemberRole(orgId: string, userId: string, role: Role): boolean {
+export async function setMemberRole(orgId: string, userId: string, role: Role): Promise<boolean> {
   return (
-    run('UPDATE memberships SET role = ? WHERE org_id = ? AND user_id = ?', role, orgId, userId) > 0
+    (await run(
+      'UPDATE memberships SET role = ? WHERE org_id = ? AND user_id = ?',
+      role,
+      orgId,
+      userId,
+    )) > 0
   );
 }
 
-export function removeMember(orgId: string, userId: string): boolean {
-  return run('DELETE FROM memberships WHERE org_id = ? AND user_id = ?', orgId, userId) > 0;
+export async function removeMember(orgId: string, userId: string): Promise<boolean> {
+  return (await run('DELETE FROM memberships WHERE org_id = ? AND user_id = ?', orgId, userId)) > 0;
 }
 
 // ── invitations (tenant-owned) ───────────────────────────────────────────────────────────
@@ -193,18 +204,18 @@ const toInvitation = (r: InvitationRow): Invitation => ({
  * Throws on the unique index when the organisation already has an outstanding invitation for
  * the address; the route turns that into a 409 rather than quietly issuing a second token.
  */
-export function createInvitation(
+export async function createInvitation(
   orgId: string,
   email: string,
   role: Role,
   invitedBy: string,
   tokenHash: string,
   ttlSeconds: number,
-): Invitation {
+): Promise<Invitation> {
   const id = randomUUID();
   const createdAt = now();
   const expiresAt = createdAt + ttlSeconds * 1000;
-  run(
+  await run(
     `INSERT INTO invitations
        (id, org_id, email, email_key, role, token_hash, invited_by, created_at, expires_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -221,17 +232,22 @@ export function createInvitation(
   return { id, orgId, email, role, createdAt, expiresAt, acceptedAt: null };
 }
 
-export function listInvitations(orgId: string): Invitation[] {
-  return all<InvitationRow>(
-    'SELECT * FROM invitations WHERE org_id = ? ORDER BY created_at DESC',
-    orgId,
+export async function listInvitations(orgId: string): Promise<Invitation[]> {
+  return (
+    await all<InvitationRow>(
+      'SELECT * FROM invitations WHERE org_id = ? ORDER BY created_at DESC',
+      orgId,
+    )
   ).map(toInvitation);
 }
 
-export function revokeInvitation(orgId: string, id: string): boolean {
+export async function revokeInvitation(orgId: string, id: string): Promise<boolean> {
   return (
-    run('DELETE FROM invitations WHERE org_id = ? AND id = ? AND accepted_at IS NULL', orgId, id) >
-    0
+    (await run(
+      'DELETE FROM invitations WHERE org_id = ? AND id = ? AND accepted_at IS NULL',
+      orgId,
+      id,
+    )) > 0
   );
 }
 
@@ -243,20 +259,20 @@ export function revokeInvitation(orgId: string, id: string): boolean {
  * here would mean the client naming the organisation it wants to join, which is a worse API
  * and no safer. The row's own org_id is what every call after this one is scoped to.
  */
-export function findInvitationByTokenHash(tokenHash: string): Invitation | null {
-  const row = one<InvitationRow>('SELECT * FROM invitations WHERE token_hash = ?', tokenHash);
+export async function findInvitationByTokenHash(tokenHash: string): Promise<Invitation | null> {
+  const row = await one<InvitationRow>('SELECT * FROM invitations WHERE token_hash = ?', tokenHash);
   return row ? toInvitation(row) : null;
 }
 
 /** Marks an invitation used. Returns false if it was already accepted, which makes it single-use. */
-export function markInvitationAccepted(orgId: string, id: string): boolean {
+export async function markInvitationAccepted(orgId: string, id: string): Promise<boolean> {
   return (
-    run(
+    (await run(
       'UPDATE invitations SET accepted_at = ? WHERE org_id = ? AND id = ? AND accepted_at IS NULL',
       now(),
       orgId,
       id,
-    ) > 0
+    )) > 0
   );
 }
 
@@ -274,14 +290,14 @@ interface AuditRow {
 }
 
 /** Appends an event. Never updated and never deleted — that is what makes it a record. */
-export function recordAudit(
+export async function recordAudit(
   orgId: string,
   action: string,
   actor: { id: string; label: string },
   subject = '',
   detail = '',
-): void {
-  run(
+): Promise<void> {
+  await run(
     `INSERT INTO audit_events
        (id, org_id, action, actor_id, actor_label, subject, detail, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -296,11 +312,13 @@ export function recordAudit(
   );
 }
 
-export function listAudit(orgId: string, limit = 50): AuditEvent[] {
-  return all<AuditRow>(
-    'SELECT * FROM audit_events WHERE org_id = ? ORDER BY created_at DESC, id DESC LIMIT ?',
-    orgId,
-    limit,
+export async function listAudit(orgId: string, limit = 50): Promise<AuditEvent[]> {
+  return (
+    await all<AuditRow>(
+      'SELECT * FROM audit_events WHERE org_id = ? ORDER BY created_at DESC, id DESC LIMIT ?',
+      orgId,
+      limit,
+    )
   ).map((r) => ({
     id: r.id,
     orgId: r.org_id,
@@ -333,10 +351,9 @@ const toProject = (r: ProjectRow): Project => ({
   updatedAt: r.updated_at,
 });
 
-export function listProjects(orgId: string): Project[] {
-  return all<ProjectRow>(
-    'SELECT * FROM projects WHERE org_id = ? ORDER BY created_at DESC',
-    orgId,
+export async function listProjects(orgId: string): Promise<Project[]> {
+  return (
+    await all<ProjectRow>('SELECT * FROM projects WHERE org_id = ? ORDER BY created_at DESC', orgId)
   ).map(toProject);
 }
 
@@ -346,15 +363,19 @@ export function listProjects(orgId: string): Project[] {
  * The org_id in the WHERE clause is the whole point: looking a project up by id alone would
  * return it to anyone who guessed the id, which is the single most common multi-tenant leak.
  */
-export function getProject(orgId: string, id: string): Project | null {
-  const row = one<ProjectRow>('SELECT * FROM projects WHERE org_id = ? AND id = ?', orgId, id);
+export async function getProject(orgId: string, id: string): Promise<Project | null> {
+  const row = await one<ProjectRow>(
+    'SELECT * FROM projects WHERE org_id = ? AND id = ?',
+    orgId,
+    id,
+  );
   return row ? toProject(row) : null;
 }
 
-export function createProject(orgId: string, name: string, notes = ''): Project {
+export async function createProject(orgId: string, name: string, notes = ''): Promise<Project> {
   const id = randomUUID();
   const at = now();
-  run(
+  await run(
     'INSERT INTO projects (id, org_id, name, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
     id,
     orgId,
@@ -366,16 +387,16 @@ export function createProject(orgId: string, name: string, notes = ''): Project 
   return { id, orgId, name, notes, createdAt: at, updatedAt: at };
 }
 
-export function updateProject(
+export async function updateProject(
   orgId: string,
   id: string,
   patch: { name?: string; notes?: string },
-): Project | null {
-  const existing = getProject(orgId, id);
+): Promise<Project | null> {
+  const existing = await getProject(orgId, id);
   if (!existing) return null;
   const name = patch.name ?? existing.name;
   const notes = patch.notes ?? existing.notes;
-  run(
+  await run(
     'UPDATE projects SET name = ?, notes = ?, updated_at = ? WHERE org_id = ? AND id = ?',
     name,
     notes,
@@ -386,6 +407,6 @@ export function updateProject(
   return getProject(orgId, id);
 }
 
-export function deleteProject(orgId: string, id: string): boolean {
-  return run('DELETE FROM projects WHERE org_id = ? AND id = ?', orgId, id) > 0;
+export async function deleteProject(orgId: string, id: string): Promise<boolean> {
+  return (await run('DELETE FROM projects WHERE org_id = ? AND id = ?', orgId, id)) > 0;
 }
