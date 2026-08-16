@@ -7,6 +7,7 @@
  * unprotected" is a build failure rather than something noticed later.
  */
 
+import { randomUUID } from 'node:crypto';
 import { LIMITS, MIN_PASSWORD_LENGTH, type Role } from '@hamscaler/shared';
 import cookieParser from 'cookie-parser';
 import express, { type Express } from 'express';
@@ -73,7 +74,13 @@ export function createApp(): Express {
     const user = createUser(email, name, await hashPassword(password));
     // A user with no organisation has nowhere to go, so sign-up creates one and makes them its
     // owner. Every later join is by invitation.
-    const org = createOrganisation(`${name}'s workspace`, `${slugify(name)}-${Date.now() % 10000}`);
+    // Suffixed with randomness, not a timestamp. `Date.now() % 10000` repeats every ten
+    // seconds, so two people signing up with the same name inside that window collided on
+    // organisations.slug and the second one got a 500 instead of an account.
+    const org = createOrganisation(
+      `${name}'s workspace`,
+      `${slugify(name)}-${randomUUID().slice(0, 8)}`,
+    );
     addMember(org.id, user.id, 'owner');
     const session = createSession(user.id);
     setSessionCookie(res, session.id, session.expiresAt);
