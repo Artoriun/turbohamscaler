@@ -39,6 +39,7 @@ import {
   createOrganisation,
   createProject,
   createUser,
+  deleteOrganisation,
   deleteProject,
   findInvitationByTokenHash,
   findUserByEmail,
@@ -54,6 +55,7 @@ import {
   ownerCount,
   recordAudit,
   removeMember,
+  renameOrganisation,
   revokeInvitation,
   roleIn,
   setMemberRole,
@@ -182,6 +184,54 @@ export function createApp(): Hono<AuthVariables> {
       return c.json({ error: 'not-signed-in' }, 401);
     }
     return c.json({ user, organisations: await organisationsFor(userId) });
+  });
+
+  // ── organisations ──────────────────────────────────────────────────────────────────────
+
+  /**
+   * A further organisation, beyond the one sign-up created.
+   *
+   * Not gated on membership of anything: anyone signed in may start one, and becomes its owner.
+   * That is what makes it possible to leave or delete the one you were given without ending up
+   * with nowhere to be.
+   */
+  app.post('/api/orgs', requireUser, async (c) => {
+    const { name } = await c.req.json().catch(() => ({}) as Record<string, unknown>);
+    if (typeof name !== 'string' || !name.trim()) {
+      return c.json({ error: 'invalid-details' }, 400);
+    }
+    const userId = c.get('userId');
+    const org = await createOrganisation(
+      name.trim(),
+      `${slugify(name)}-${randomUUID().slice(0, 8)}`,
+    );
+    await addMember(org.id, userId, 'owner');
+    await recordAudit(org.id, 'organisation.created', await actorOf(c), org.name);
+    return c.json({ organisation: org, organisations: await organisationsFor(userId) }, 201);
+  });
+
+  app.patch('/api/orgs/:orgId', requireUser, requireOrg('admin'), async (c) => {
+    const { name } = await c.req.json().catch(() => ({}) as Record<string, unknown>);
+    if (typeof name !== 'string' || !name.trim()) {
+      return c.json({ error: 'invalid-details' }, 400);
+    }
+    const orgId = c.get('orgId');
+    await renameOrganisation(orgId, name.trim());
+    await recordAudit(orgId, 'organisation.renamed', await actorOf(c), name.trim());
+    return c.json({ organisations: await organisationsFor(c.get('userId')) });
+  });
+
+  /**
+   * Deletes the organisation and everything in it.
+   *
+   * Owner only, and there is no undo. No audit entry is written: the log belongs to the
+   * organisation and goes with it, so there is nowhere left to record that this happened.
+   */
+  app.delete('/api/orgs/:orgId', requireUser, requireOrg('owner'), async (c) => {
+    const orgId = c.get('orgId');
+    const userId = c.get('userId');
+    await deleteOrganisation(orgId);
+    return c.json({ organisations: await organisationsFor(userId) });
   });
 
   // ── organisation members ───────────────────────────────────────────────────────────────
@@ -452,6 +502,9 @@ export const ROUTE_MANIFEST: RouteSpec[] = [
   { method: 'post', path: '/api/auth/sign-out', auth: 'user' },
   { method: 'post', path: '/api/auth/sign-out-everywhere', auth: 'user' },
   { method: 'get', path: '/api/me', auth: 'user' },
+  { method: 'post', path: '/api/orgs', auth: 'user' },
+  { method: 'patch', path: '/api/orgs/:orgId', auth: 'admin' },
+  { method: 'delete', path: '/api/orgs/:orgId', auth: 'owner' },
   { method: 'get', path: '/api/orgs/:orgId/members', auth: 'member' },
   { method: 'patch', path: '/api/orgs/:orgId/members/:userId', auth: 'admin' },
   { method: 'delete', path: '/api/orgs/:orgId/members/:userId', auth: 'admin' },

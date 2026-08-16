@@ -92,6 +92,21 @@ export async function organisationById(id: string): Promise<Organisation | null>
   return row ? { id: row.id, name: row.name, slug: row.slug, createdAt: row.created_at } : null;
 }
 
+export async function renameOrganisation(orgId: string, name: string): Promise<boolean> {
+  return (await run('UPDATE organisations SET name = ? WHERE id = ?', name, orgId)) > 0;
+}
+
+/**
+ * Deletes an organisation and everything belonging to it.
+ *
+ * The cascade is in the schema, not here: memberships, projects, invitations and audit_events
+ * all reference organisations(id) ON DELETE CASCADE. Doing it in application code instead means
+ * a table added later is quietly left orphaned, and nothing fails.
+ */
+export async function deleteOrganisation(orgId: string): Promise<boolean> {
+  return (await run('DELETE FROM organisations WHERE id = ?', orgId)) > 0;
+}
+
 export async function addMember(orgId: string, userId: string, role: Role): Promise<Membership> {
   const createdAt = now();
   await run(
