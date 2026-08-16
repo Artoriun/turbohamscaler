@@ -36,3 +36,30 @@ test('an unknown path still serves the app rather than a host 404', async ({ pag
   expect(res?.status()).toBe(200);
   await expect(page.getByRole('heading', { name: 'Nothing here' })).toBeVisible();
 });
+
+test('the public pages carry their text without any JavaScript', async ({ browser, baseURL }) => {
+  // What a crawler that does not run scripts sees, and what paints before the bundle arrives.
+  // Prerendering is the only reason there is anything here at all: the app mounts into an
+  // empty #root, so without it this page is a blank div.
+  const context = await browser.newContext({ javaScriptEnabled: false, baseURL });
+  const page = await context.newPage();
+
+  await page.goto('/');
+  await expect(page.locator('h1')).toContainText('multi-tenant app');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+
+  await page.goto('/ja');
+  await expect(page.locator('h1')).toContainText('マルチテナント');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+
+  await context.close();
+});
+
+test('the fallback stays the empty shell, not a copy of a prerendered page', async ({ page }) => {
+  // 404.html is what the host serves for anything unmatched. A prerendered page copied here
+  // would show that page's text at every unknown URL, which is worse than showing nothing.
+  const res = await page.request.get('/404.html');
+  const html = await res.text();
+  expect(html).toContain('id="root"');
+  expect(html).not.toContain('multi-tenant app');
+});

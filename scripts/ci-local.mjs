@@ -115,10 +115,21 @@ if (steps.length < 7) {
   process.exit(1);
 }
 
+/**
+ * Every npm script a step runs, not just the first.
+ *
+ * A step can chain them — `npm run prerender && npm run check:lighthouse` — and reading only
+ * the first made the skip list miss the part that cannot run here, so the slow step ran anyway.
+ */
+const scriptsIn = (run) => [...run.matchAll(/npm run ([\w:-]+)/g)].map((m) => m[1]);
+const skipReason = (run) =>
+  scriptsIn(run)
+    .map((s) => SKIP.get(s))
+    .find(Boolean);
+
 if (process.argv.includes('--list')) {
   for (const s of steps) {
-    const script = s.run.replace(/^npm run /, '').split(' ')[0];
-    console.log(`${SKIP.has(script) ? 'skip' : 'run '}  ${s.name.padEnd(38)} ${s.run}`);
+    console.log(`${skipReason(s.run) ? 'skip' : 'run '}  ${s.name.padEnd(38)} ${s.run}`);
   }
   process.exit(0);
 }
@@ -127,9 +138,9 @@ let failed = null;
 const started = Date.now();
 
 for (const step of steps) {
-  const script = step.run.replace(/^npm run /, '').split(' ')[0];
-  if (SKIP.has(script)) {
-    console.log(`  skip  ${step.name} — ${SKIP.get(script)}`);
+  const reason = skipReason(step.run);
+  if (reason) {
+    console.log(`  skip  ${step.name} — ${reason}`);
     continue;
   }
   // Overwrite the running line only where that works. Piped to a file or another process,

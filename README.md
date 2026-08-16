@@ -55,6 +55,7 @@ No `.env` is needed to run it. For production see [`.env.example`](.env.example)
 
 ```bash
 npm run build          # production build
+npm run prerender      # build, then write each public route out with its text in the markup
 npm run ci             # everything CI runs, in order
 npm run test           # API and unit tests
 npm run test:e2e       # Playwright, against the dev server
@@ -83,6 +84,8 @@ npm run db:reset       # delete the local database and reseed
 - **Rate-limited sign-in**, recorded in the database so a restart does not reset it
 - **Seeded demo data**, two organisations, no cloud account
 - **Light, dark or follow the system**, chosen before first paint so the theme never flashes
+- **Prerendered public pages** — each route is a real file with its text already in the HTML,
+  so a crawler that runs no JavaScript still sees the page and every URL answers 200
 
 ---
 

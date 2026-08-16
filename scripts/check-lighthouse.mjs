@@ -17,7 +17,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
-import { createStaticServer, listen } from './lib/static-server.mjs';
+import { baseFromShell, createStaticServer, listen } from './lib/static-server.mjs';
 
 /**
  * Not execFileSync: that blocks the event loop until the child exits, but the child is
@@ -33,7 +33,7 @@ function runLighthouse(args, env) {
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(ROOT, 'packages/web/dist');
-const BASE = (process.env.BASE_PATH ?? '/').replace(/\/?$/, '/');
+
 const PORT = Number(process.env.LH_PORT ?? 3492);
 const CHROME_PATH = chromium.executablePath();
 
@@ -53,6 +53,9 @@ if (!existsSync(join(DIST, 'index.html'))) {
   console.error('✗ no build to audit — run `npm run build` first');
   process.exit(1);
 }
+
+// Read from the build rather than the environment. See baseFromShell.
+const BASE = baseFromShell(readFileSync(join(DIST, 'index.html'), 'utf8'));
 
 const server = createStaticServer({ dist: DIST, basePath: BASE });
 await listen(server, PORT);
