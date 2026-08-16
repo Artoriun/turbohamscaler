@@ -334,6 +334,11 @@ button.link {
   }
 }
 
+/* The before/after of a role change, quieter than the sentence it qualifies. */
+.detail {
+  color: var(--muted);
+}
+
 /* Narrow enough that a member row still fits the name, the role and the remove button on a
    phone without wrapping into three lines. */
 .role-select {

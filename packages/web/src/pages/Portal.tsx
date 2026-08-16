@@ -1,5 +1,6 @@
 import {
   APP_NAME,
+  type AuditEvent,
   type Invitation,
   type Organisation,
   type OrganisationMembership,
@@ -16,6 +17,7 @@ import { fill, pathFor, resolveLang, useT } from '../i18n';
 import {
   ApiError,
   apiAcceptInvitation,
+  apiAudit,
   apiCreateProject,
   apiDeleteProject,
   apiInvitations,
@@ -50,6 +52,8 @@ export default function Portal() {
   const [orgId, setOrgId] = useState('');
   const [loading, setLoading] = useState(true);
   const [hasApi, setHasApi] = useState(true);
+  // Bumped when a membership changes, so the log below reflects it without a reload.
+  const [activityKey, setActivityKey] = useState(0);
   // Both ways out of the portal have to keep the reader's language. Hardcoding "/" sent someone
   // reading /ja/app to the English overview, which is a one-way door: nothing on the page they
   // land on tells them they were switched, or how to get back.
@@ -170,9 +174,13 @@ export default function Portal() {
                 orgId={org.id}
                 canInvite={org.role !== 'member'}
                 myRole={org.role}
-                onChanged={load}
+                onChanged={() => {
+                  load();
+                  setActivityKey((k) => k + 1);
+                }}
               />
             </div>
+            {org.role !== 'member' ? <Activity orgId={org.id} reloadKey={activityKey} /> : null}
           </>
         ) : null}
       </main>
@@ -290,6 +298,68 @@ function AcceptInvitation({ onJoined }: { onJoined: () => void }) {
           {t.portal.joinDecline}
         </button>
       </div>
+    </section>
+  );
+}
+
+/**
+ * What has happened in this organisation, newest first.
+ *
+ * Each line is rendered from the action name through the dictionary, so the log reads in the
+ * viewer's language while what is stored stays a stable identifier rather than a sentence in
+ * whatever language the person who caused it happened to be using.
+ */
+function Activity({ orgId, reloadKey }: { orgId: string; reloadKey: number }) {
+  const t = useT();
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+
+  useEffect(() => {
+    let live = true;
+    apiAudit(orgId)
+      .then(({ events: list }) => {
+        if (live) setEvents(list);
+      })
+      .catch((err) => {
+        if (!(err instanceof ApiError) || err.status !== 401) throw err;
+      });
+    return () => {
+      live = false;
+    };
+  }, [orgId, reloadKey]);
+
+  const describe = (e: AuditEvent) => {
+    const template = t.portal.action[e.action as keyof typeof t.portal.action];
+    return template ? fill(template, { subject: e.subject }) : `${e.action} ${e.subject}`;
+  };
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <h2>{t.portal.activity}</h2>
+        <span className="count">{events.length}</span>
+      </div>
+      {events.length === 0 ? (
+        <p className="empty">{t.portal.activityNone}</p>
+      ) : (
+        <ul className="list">
+          {events.map((e) => (
+            <li key={e.id}>
+              <div className="grow">
+                <span className="title">
+                  {describe(e)}
+                  {e.detail ? <span className="detail"> ({e.detail})</span> : null}
+                </span>
+                <span className="meta">
+                  {fill(t.portal.activityBy, { who: e.actorLabel })} ·{' '}
+                  <time dateTime={new Date(e.createdAt).toISOString()}>
+                    {new Date(e.createdAt).toLocaleString()}
+                  </time>
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

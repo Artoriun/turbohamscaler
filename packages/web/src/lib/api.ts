@@ -7,6 +7,7 @@
  */
 
 import type {
+  AuditEvent,
   Invitation,
   Organisation,
   OrganisationMembership,
@@ -97,6 +98,9 @@ export const apiRemoveMember = (orgId: string, userId: string) =>
 export const apiLeaveOrg = (orgId: string) =>
   call<{ organisations: OrganisationMembership[] }>(`/api/orgs/${orgId}/leave`, { method: 'POST' });
 
+export const apiAudit = (orgId: string) =>
+  call<{ events: AuditEvent[] }>(`/api/orgs/${orgId}/audit`);
+
 export const apiInvitations = (orgId: string) =>
   call<{ invitations: Invitation[] }>(`/api/orgs/${orgId}/invitations`);
 
@@ -121,4 +125,4 @@ export const apiAcceptInvitation = (token: string) =>
     method: 'POST',
   });
 
-export type { Invitation, Organisation, OrganisationMembership, Project, Session };
+export type { AuditEvent, Invitation, Organisation, OrganisationMembership, Project, Session };

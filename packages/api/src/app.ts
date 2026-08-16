@@ -39,6 +39,7 @@ import {
   findUserByEmail,
   findUserById,
   getProject,
+  listAudit,
   listInvitations,
   listProjects,
   markInvitationAccepted,
@@ -46,6 +47,7 @@ import {
   organisationById,
   organisationsFor,
   ownerCount,
+  recordAudit,
   removeMember,
   revokeInvitation,
   roleIn,
@@ -53,6 +55,18 @@ import {
   updateProject,
 } from './repo.ts';
 import { clearAttempts, recordAttempt } from './signInAttempts.ts';
+
+/**
+ * The actor for an audit entry: who they are, and how to name them later.
+ *
+ * The label is stored alongside the id because an id stops meaning anything once the account is
+ * gone, and the record has to outlive its subject to be worth keeping.
+ */
+const actorOf = (req: express.Request) => {
+  const id = (req as AuthedRequest).userId as string;
+  const user = findUserById(id);
+  return { id, label: user ? `${user.name} <${user.email}>` : id };
+};
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -210,6 +224,13 @@ export function createApp(): Express {
       return;
     }
     setMemberRole(orgId, targetId, role as Role);
+    recordAudit(
+      orgId,
+      'member.role-changed',
+      actorOf(req),
+      findUserById(targetId)?.email ?? targetId,
+      `${targetRole} → ${role}`,
+    );
     res.json({ members: membersOf(orgId) });
   });
 
@@ -235,6 +256,7 @@ export function createApp(): Express {
       return;
     }
     removeMember(orgId, targetId);
+    recordAudit(orgId, 'member.removed', actorOf(req), findUserById(targetId)?.email ?? targetId);
     res.json({ members: membersOf(orgId) });
   });
 
@@ -253,8 +275,20 @@ export function createApp(): Express {
       res.status(409).json({ error: 'last-owner' });
       return;
     }
+    const who = actorOf(req);
     removeMember(orgId, userId);
+    recordAudit(orgId, 'member.left', who, who.label);
     res.json({ organisations: organisationsFor(userId) });
+  });
+
+  /**
+   * What has happened in this organisation.
+   *
+   * Admin-only: it names people and what was done to them, which is more than a member needs
+   * and more than they should be handed by default.
+   */
+  app.get('/api/orgs/:orgId/audit', requireUser, requireOrg('admin'), (req, res) => {
+    res.json({ events: listAudit((req as AuthedRequest).orgId as string) });
   });
 
   // ── invitations ───────────────────────────────────────────────────────────────────────
@@ -286,6 +320,7 @@ export function createApp(): Express {
       );
       // The only time the token leaves the server. There is no mail sender in this starter, so
       // the caller is responsible for delivering it; wire one in here and stop returning it.
+      recordAudit(orgId, 'invitation.created', actorOf(req), email, role as string);
       res.status(201).json({ invitation, token });
     } catch {
       // The partial unique index rejects a second outstanding invitation for the same address.
@@ -300,10 +335,12 @@ export function createApp(): Express {
   app.delete('/api/orgs/:orgId/invitations/:id', requireUser, requireOrg('admin'), (req, res) => {
     const id = param(req, 'id');
     const orgId = (req as AuthedRequest).orgId as string;
+    const invitation = listInvitations(orgId).find((i) => i.id === id);
     if (!id || !revokeInvitation(orgId, id)) {
       res.status(404).json({ error: 'not-found' });
       return;
     }
+    recordAudit(orgId, 'invitation.revoked', actorOf(req), invitation?.email ?? id);
     res.status(204).end();
   });
 
@@ -349,6 +386,13 @@ export function createApp(): Express {
       return;
     }
     addMember(invitation.orgId, userId, invitation.role);
+    recordAudit(
+      invitation.orgId,
+      'invitation.accepted',
+      actorOf(req),
+      invitation.email,
+      invitation.role,
+    );
     res.status(201).json({ organisations: organisationsFor(userId) });
   });
 
@@ -434,6 +478,7 @@ export const ROUTE_MANIFEST: RouteSpec[] = [
   { method: 'post', path: '/api/orgs/:orgId/leave', auth: 'member' },
   { method: 'post', path: '/api/orgs/:orgId/invitations', auth: 'admin' },
   { method: 'get', path: '/api/orgs/:orgId/invitations', auth: 'admin' },
+  { method: 'get', path: '/api/orgs/:orgId/audit', auth: 'admin' },
   { method: 'delete', path: '/api/orgs/:orgId/invitations/:id', auth: 'admin' },
   { method: 'get', path: '/api/invitations/:token', auth: 'user' },
   { method: 'post', path: '/api/invitations/:token/accept', auth: 'user' },
