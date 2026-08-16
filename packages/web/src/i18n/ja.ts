@@ -84,6 +84,17 @@ export const ja: Dictionary = {
 
   portal: {
     organisation: '組織',
+    orgSettings: '組織',
+    orgName: '名前',
+    orgRename: '名前を変更',
+    orgDelete: 'この組織を削除',
+    orgDeleteConfirm:
+      '{name} を削除しますか？プロジェクト・メンバー・招待・履歴もすべて削除されます。元に戻せません。',
+    orgCreate: '新しい組織',
+    orgCreateName: '新しい組織の名前',
+    orgCreateAction: '作成',
+    orgNone: 'まだどの組織にも所属していません。まずは組織を作成してください。',
+    orgFailed: 'この変更は許可されていません。',
     ownerOf:
       'あなたはこの組織のオーナーです。以下のデータはすべてこの組織のもので、他の誰のものでもありません。',
     memberOf:
@@ -102,6 +113,8 @@ export const ja: Dictionary = {
     activityNone: 'まだ何も起きていません。',
     activityBy: '実行者：{who}',
     action: {
+      'organisation.created': '{subject} を作成しました',
+      'organisation.renamed': '組織名を {subject} に変更しました',
       'invitation.created': '{subject} を招待しました',
       'invitation.revoked': '{subject} への招待を取り消しました',
       'invitation.accepted': '{subject} が参加しました',

@@ -18,7 +18,9 @@ import {
   ApiError,
   apiAcceptInvitation,
   apiAudit,
+  apiCreateOrg,
   apiCreateProject,
+  apiDeleteOrg,
   apiDeleteProject,
   apiInvitations,
   apiInvite,
@@ -27,6 +29,7 @@ import {
   apiOpenInvitation,
   apiProjects,
   apiRemoveMember,
+  apiRenameOrg,
   apiRevokeInvitation,
   apiSetMemberRole,
   apiSignIn,
@@ -158,6 +161,12 @@ export default function Portal() {
 
       <main className="page">
         <AcceptInvitation onJoined={load} />
+        {!org ? (
+          <section className="panel">
+            <p className="empty">{t.portal.orgNone}</p>
+            <OrganisationSettings org={undefined} onChanged={load} />
+          </section>
+        ) : null}
         {org ? (
           <>
             <div className="page-head">
@@ -180,6 +189,7 @@ export default function Portal() {
                 }}
               />
             </div>
+            <OrganisationSettings org={org} onChanged={load} />
             {org.role !== 'member' ? <Activity orgId={org.id} reloadKey={activityKey} /> : null}
           </>
         ) : null}
@@ -360,6 +370,100 @@ function Activity({ orgId, reloadKey }: { orgId: string; reloadKey: number }) {
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+/**
+ * Renaming and deleting the organisation, and starting another.
+ *
+ * Creating one is offered to everybody, including someone who belongs to nothing — that is the
+ * state deleting your last organisation leaves you in, and without a way out of it the delete
+ * button would be a trap.
+ */
+function OrganisationSettings({
+  org,
+  onChanged,
+}: {
+  org: OrganisationMembership | undefined;
+  onChanged: () => void;
+}) {
+  const t = useT();
+  const [name, setName] = useState(org?.name ?? '');
+  const [newName, setNewName] = useState('');
+  const [error, setError] = useState('');
+  const canRename = org && org.role !== 'member';
+
+  // The field follows the organisation you are looking at, rather than keeping what you typed
+  // for a different one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the name it mirrors
+  useEffect(() => setName(org?.name ?? ''), [org?.name]);
+
+  const attempt = (work: Promise<unknown>) => {
+    setError('');
+    work.then(onChanged).catch((err) => {
+      if (!(err instanceof ApiError) || err.status !== 401) setError(t.portal.orgFailed);
+    });
+  };
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <h2>{t.portal.orgSettings}</h2>
+      </div>
+
+      {canRename ? (
+        <form
+          className="row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (org) attempt(apiRenameOrg(org.id, name.trim()));
+          }}
+        >
+          <label className="grow">
+            {t.portal.orgName}
+            <input value={name} onChange={(e) => setName(e.target.value)} required />
+          </label>
+          <button type="submit">{t.portal.orgRename}</button>
+        </form>
+      ) : null}
+
+      <form
+        className="row"
+        onSubmit={(e) => {
+          e.preventDefault();
+          attempt(apiCreateOrg(newName.trim()).then(() => setNewName('')));
+        }}
+      >
+        <label className="grow">
+          {t.portal.orgCreateName}
+          <input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder={t.portal.orgCreate}
+            required
+          />
+        </label>
+        <button type="submit">{t.portal.orgCreateAction}</button>
+      </form>
+
+      {org?.role === 'owner' ? (
+        <button
+          type="button"
+          className="danger"
+          onClick={() => {
+            // Everything in it goes. A confirm() is crude, and it is also the only thing
+            // standing between a stray click and an organisation nobody can get back.
+            if (window.confirm(fill(t.portal.orgDeleteConfirm, { name: org.name }))) {
+              attempt(apiDeleteOrg(org.id));
+            }
+          }}
+        >
+          {t.portal.orgDelete}
+        </button>
+      ) : null}
+
+      {error ? <p className="error">{error}</p> : null}
     </section>
   );
 }

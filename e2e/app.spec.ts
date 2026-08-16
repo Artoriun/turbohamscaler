@@ -317,3 +317,26 @@ test('the activity log records what an admin did', async ({ browser }) => {
 
   await hostCtx.close();
 });
+
+test('an organisation can be renamed, added to, and deleted', async ({ page }) => {
+  await signUp(page, unique());
+
+  // Rename: the heading and the switcher both follow it.
+  await page.getByLabel('Name', { exact: true }).fill('Renamed workspace');
+  await page.getByRole('button', { name: 'Rename' }).click();
+  await expect(page.getByRole('heading', { name: 'Renamed workspace' })).toBeVisible();
+
+  // A second organisation, which is what makes deleting the first survivable.
+  await page.getByLabel('Name for the new organisation').fill('Second workspace');
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await expect(page.getByRole('combobox', { name: 'Organisation' }).locator('option')).toHaveCount(
+    2,
+  );
+
+  // Delete the one being viewed. The confirm is the only thing between a click and no undo.
+  page.once('dialog', (d) => d.accept());
+  await page.getByRole('button', { name: 'Delete this organisation' }).click();
+  await expect(page.getByRole('combobox', { name: 'Organisation' }).locator('option')).toHaveCount(
+    1,
+  );
+});

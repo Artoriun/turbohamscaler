@@ -89,6 +89,17 @@ export const en = {
 
   portal: {
     organisation: 'Organisation',
+    orgSettings: 'Organisation',
+    orgName: 'Name',
+    orgRename: 'Rename',
+    orgDelete: 'Delete this organisation',
+    orgDeleteConfirm:
+      'Delete {name}? Its projects, members, invitations and history go with it. This cannot be undone.',
+    orgCreate: 'New organisation',
+    orgCreateName: 'Name for the new organisation',
+    orgCreateAction: 'Create',
+    orgNone: 'You do not belong to an organisation yet. Create one to get started.',
+    orgFailed: 'That change was not allowed.',
     ownerOf:
       'You are the owner of this organisation. Everything below belongs to it and to nobody else.',
     memberOf:
@@ -107,6 +118,8 @@ export const en = {
     activityNone: 'Nothing has happened yet.',
     activityBy: 'by {who}',
     action: {
+      'organisation.created': 'Created {subject}',
+      'organisation.renamed': 'Renamed the organisation to {subject}',
       'invitation.created': 'Invited {subject}',
       'invitation.revoked': 'Revoked the invitation for {subject}',
       'invitation.accepted': '{subject} joined',
