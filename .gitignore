@@ -19,3 +19,6 @@ playwright-report/
 test-results/
 .turbo/
 .DS_Store
+
+# Local Workers state (wrangler dev --local): a D1 file and caches, all regenerable.
+.wrangler/

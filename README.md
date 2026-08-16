@@ -58,6 +58,7 @@ npm run build          # production build
 npm run prerender      # build, then write each public route out with its text in the markup
 npm run ci             # everything CI runs, in order
 npm run test           # API and unit tests
+npm run test:api:worker # the same API tests, against a local Worker + D1
 npm run test:e2e       # Playwright, against the dev server
 npm run test:e2e:dist  # the same, against the built output
 npm run check:tenancy  # structural guards on tenant isolation
@@ -122,8 +123,12 @@ covered — which is why step 2 is not optional.
 ## Testing
 
 `npm run ci` runs the pipeline in CI's order: Biome, `tsc`, the tenancy guards, API and unit
-tests, the build, a gzipped bundle budget, Playwright against the dev server, the suite again
-against the built output, and Lighthouse.
+tests, **the API tests again on a local Worker + D1**, the build, a gzipped bundle budget,
+Playwright against the dev server, the suite again against the built output, and Lighthouse.
+
+Running the API suite twice is the point: the same assertions pass on Node and on Workers, so
+"it runs on both" is checked rather than asserted. It is all local — wrangler runs on Miniflare
+— so it needs no Cloudflare account.
 
 Lighthouse gates accessibility, SEO, best-practices and CLS — all properties of the code. It
 measures performance and prints it without gating: a shared runner's timings drift more than

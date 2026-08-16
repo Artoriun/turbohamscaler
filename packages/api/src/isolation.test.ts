@@ -92,7 +92,7 @@ describe('a signed-in user of another organisation', () => {
     const body = (await members.json()) as { members: { email: string }[] };
     assert.deepEqual(
       body.members.map((m) => m.email),
-      ['alice@example.com'],
+      [alice.email],
     );
   });
 
