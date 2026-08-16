@@ -369,3 +369,23 @@ test('changing your password signs your other devices out', async ({ browser }) 
   await first.close();
   await second.close();
 });
+
+test('a project can be edited, notes and all', async ({ page }) => {
+  await signUp(page, unique());
+  await page.getByLabel('New project name').fill('First draft');
+  await page.getByRole('button', { name: 'Add' }).click();
+  await expect(page.getByText('First draft')).toBeVisible();
+
+  await page.getByRole('button', { name: /^Name for First draft$/ }).click();
+  await page.getByLabel('Name for First draft').fill('Second draft');
+  await page.getByLabel('Notes for First draft').fill('Now with notes');
+  // Scoped to the editing row: 'Save name' in the account panel is a different button.
+  await page.locator('.project-edit').getByRole('button', { name: 'Save', exact: true }).click();
+
+  // Both fields survive the round trip. Notes had no way into the UI at all before this.
+  await expect(page.getByText('Second draft')).toBeVisible();
+  await expect(page.getByText('Now with notes')).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText('Now with notes')).toBeVisible();
+});

@@ -339,6 +339,12 @@ button.link {
   color: var(--muted);
 }
 
+/* An editing row stacks: two fields and the buttons do not fit across a phone. */
+.project-edit {
+  display: grid;
+  gap: 0.5rem;
+}
+
 /* Narrow enough that a member row still fits the name, the role and the remove button on a
    phone without wrapping into three lines. */
 .role-select {
