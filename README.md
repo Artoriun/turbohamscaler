@@ -114,8 +114,14 @@ covered — which is why step 2 is not optional.
 ## Testing
 
 `npm run ci` runs the pipeline in CI's order: Biome, `tsc`, the tenancy guards, API and unit
-tests, the build, a gzipped bundle budget, Playwright against the dev server, and the suite
-again against the built output.
+tests, the build, a gzipped bundle budget, Playwright against the dev server, the suite again
+against the built output, and Lighthouse.
+
+Lighthouse gates accessibility, SEO, best-practices and CLS — all properties of the code. It
+measures performance and prints it without gating: a shared runner's timings drift more than
+the thing being measured, and the bundle budget is the half of performance that is
+deterministic. `npm run ci` skips it locally for the same reason; run `npm run check:lighthouse`
+on a quiet machine.
 
 ---
 

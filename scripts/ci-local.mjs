@@ -28,7 +28,6 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url));
  */
 const SKIP = new Map([
   ['check:lighthouse', 'slow, and its numbers are only meaningful on a quiet machine'],
-  ['check:lighthouse:vue', 'slow, and its numbers are only meaningful on a quiet machine'],
 ]);
 
 /**
