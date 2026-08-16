@@ -70,8 +70,11 @@ npm run db:reset       # delete the local database and reseed
 
 ## Features
 
-- **Accounts** — sign up, sign in, sign out, sign out everywhere. Passwords hashed with
-  scrypt; sessions are opaque ids in a table, so revoking one actually revokes it
+- **Accounts** — sign up, sign in, sign out, sign out everywhere; change your name, change
+  your password, close your account. Passwords are hashed with Web Crypto PBKDF2 and sessions
+  are opaque ids in a table, so revoking one actually revokes it — which is why changing a
+  password ends every other session, and why closing an account is refused while it is the
+  only owner of an organisation
 - **Organisations** you can create, rename and delete, with `member` / `admin` / `owner` roles
   and per-tenant projects. Roles can
   be changed, members removed, and anyone can leave — except the last owner, because an

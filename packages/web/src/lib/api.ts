@@ -98,6 +98,17 @@ export const apiRemoveMember = (orgId: string, userId: string) =>
 export const apiLeaveOrg = (orgId: string) =>
   call<{ organisations: OrganisationMembership[] }>(`/api/orgs/${orgId}/leave`, { method: 'POST' });
 
+export const apiRenameSelf = (name: string) =>
+  call<{ user: User }>('/api/me', { method: 'PATCH', body: JSON.stringify({ name }) });
+
+export const apiChangePassword = (current: string, next: string) =>
+  call<{ ok: true }>('/api/me/password', {
+    method: 'POST',
+    body: JSON.stringify({ current, next }),
+  });
+
+export const apiCloseAccount = () => call<{ ok: true }>('/api/me', { method: 'DELETE' });
+
 export const apiCreateOrg = (name: string) =>
   call<{ organisation: Organisation; organisations: OrganisationMembership[] }>('/api/orgs', {
     method: 'POST',

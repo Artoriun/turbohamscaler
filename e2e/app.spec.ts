@@ -340,3 +340,32 @@ test('an organisation can be renamed, added to, and deleted', async ({ page }) =
     1,
   );
 });
+
+test('changing your password signs your other devices out', async ({ browser }) => {
+  const email = unique();
+
+  const first = await browser.newContext();
+  const firstPage = await first.newPage();
+  await signUp(firstPage, email);
+
+  // A second device, signed in as the same person.
+  const second = await browser.newContext();
+  const secondPage = await second.newPage();
+  await secondPage.goto('/app');
+  await secondPage.getByLabel('Email').fill(email);
+  await secondPage.getByLabel('Password').fill('correct-horse-battery');
+  await secondPage.getByRole('button', { name: 'Sign in' }).click();
+  await expect(secondPage.getByRole('heading', { name: 'Projects' })).toBeVisible();
+
+  await firstPage.getByLabel('Current password').fill('correct-horse-battery');
+  await firstPage.getByLabel('New password').fill('a-brand-new-password');
+  await firstPage.getByRole('button', { name: 'Change password' }).click();
+  await expect(firstPage.getByText('Password changed.')).toBeVisible();
+
+  // The other device is out on its next request — which is the entire point of the feature.
+  await secondPage.reload();
+  await expect(secondPage.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+
+  await first.close();
+  await second.close();
+});

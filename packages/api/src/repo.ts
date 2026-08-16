@@ -68,6 +68,36 @@ export async function findUserById(id: string): Promise<User | null> {
   return row ? toUser(row) : null;
 }
 
+export async function updateUserName(userId: string, name: string): Promise<boolean> {
+  return (await run('UPDATE users SET name = ? WHERE id = ?', name, userId)) > 0;
+}
+
+export async function updateUserPassword(userId: string, passwordHash: string): Promise<boolean> {
+  return (await run('UPDATE users SET password = ? WHERE id = ?', passwordHash, userId)) > 0;
+}
+
+/**
+ * Deletes the account.
+ *
+ * Memberships and sessions cascade from users(id). Organisations do not — an organisation is
+ * not owned by a row in users, and deleting the last owner's account would otherwise take a
+ * shared workspace with it. The route refuses while any sole ownership remains.
+ */
+export async function deleteUser(userId: string): Promise<boolean> {
+  return (await run('DELETE FROM users WHERE id = ?', userId)) > 0;
+}
+
+/** Organisations where this user is the only owner. Nothing may orphan one. */
+export async function soleOwnerships(userId: string): Promise<{ id: string; name: string }[]> {
+  return await all<{ id: string; name: string }>(
+    `SELECT o.id, o.name
+       FROM organisations o
+       JOIN memberships mine ON mine.org_id = o.id AND mine.user_id = ? AND mine.role = 'owner'
+      WHERE (SELECT COUNT(*) FROM memberships m WHERE m.org_id = o.id AND m.role = 'owner') = 1`,
+    userId,
+  );
+}
+
 // ── organisations and membership ─────────────────────────────────────────────────────────
 
 export async function createOrganisation(name: string, slug: string): Promise<Organisation> {
