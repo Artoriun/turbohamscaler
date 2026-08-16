@@ -108,6 +108,18 @@ export const apiRemoveMember = (orgId: string, userId: string) =>
 export const apiLeaveOrg = (orgId: string) =>
   call<{ organisations: OrganisationMembership[] }>(`/api/orgs/${orgId}/leave`, { method: 'POST' });
 
+export interface SessionSummary {
+  handle: string;
+  current: boolean;
+  createdAt: number;
+  expiresAt: number;
+}
+
+export const apiSessions = () => call<{ sessions: SessionSummary[] }>('/api/me/sessions');
+
+export const apiRevokeSession = (handle: string) =>
+  call<{ sessions: SessionSummary[] }>(`/api/me/sessions/${handle}/revoke`, { method: 'POST' });
+
 export const apiRenameSelf = (name: string) =>
   call<{ user: User }>('/api/me', { method: 'PATCH', body: JSON.stringify({ name }) });
 

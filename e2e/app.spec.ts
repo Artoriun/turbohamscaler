@@ -389,3 +389,36 @@ test('a project can be edited, notes and all', async ({ page }) => {
   await page.reload();
   await expect(page.getByText('Now with notes')).toBeVisible();
 });
+
+test('your sessions are listed, and one can be signed out on its own', async ({ browser }) => {
+  const email = unique();
+
+  const first = await browser.newContext();
+  const firstPage = await first.newPage();
+  await signUp(firstPage, email);
+
+  const second = await browser.newContext();
+  const secondPage = await second.newPage();
+  await secondPage.goto('/app');
+  await secondPage.getByLabel('Email').fill(email);
+  await secondPage.getByLabel('Password').fill('correct-horse-battery');
+  await secondPage.getByRole('button', { name: 'Sign in' }).click();
+  await expect(secondPage.getByRole('heading', { name: 'Projects' })).toBeVisible();
+
+  await firstPage.reload();
+  const sessions = firstPage.locator('.invites', { hasText: 'Signed in on' }).locator('li');
+  await expect(sessions).toHaveCount(2);
+  await expect(firstPage.getByText('This device')).toBeVisible();
+
+  // Sign out the other one, not this one.
+  await sessions.filter({ hasNotText: 'This device' }).getByRole('button').click();
+  await expect(sessions).toHaveCount(1);
+
+  await secondPage.reload();
+  await expect(secondPage.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  // And this device is still signed in.
+  await expect(firstPage.getByRole('heading', { name: 'Projects' })).toBeVisible();
+
+  await first.close();
+  await second.close();
+});

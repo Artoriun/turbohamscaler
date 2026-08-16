@@ -1,4 +1,5 @@
 import { APP_NAME, DEFAULT_LANG, LANGS } from '@hamscaler/shared';
+import { lazy, Suspense } from 'react';
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import LanguageToggle from './components/LanguageToggle';
 import Mascot from './components/Mascot';
@@ -6,7 +7,16 @@ import ThemeToggle from './components/ThemeToggle';
 import { LanguageProvider, pathFor, resolveLang, useT } from './i18n';
 import Home from './pages/Home';
 import NotFound from './pages/NotFound';
-import Portal from './pages/Portal';
+
+/**
+ * Loaded on demand, not with the public pages.
+ *
+ * The portal is the larger half of this app — members, invitations, the audit log, organisation
+ * and account settings — and none of it means anything to a visitor reading the marketing page.
+ * Shipping it in the initial payload put the public page over its bundle budget, which is
+ * exactly what that budget is for: the fix is to stop sending it, not to raise the number.
+ */
+const Portal = lazy(() => import('./pages/Portal'));
 
 /**
  * Routing, and the chrome the public pages share.
@@ -26,7 +36,17 @@ export default function App() {
     <LanguageProvider>
       <Routes>
         {PREFIXES.map((prefix) => (
-          <Route key={prefix || 'root'} path={`${prefix}/app`} element={<Portal />} />
+          <Route
+            key={prefix || 'root'}
+            path={`${prefix}/app`}
+            // No visible fallback: the portal shows its own loading state as soon as it mounts,
+            // and a second spinner before that one only adds a flash of different furniture.
+            element={
+              <Suspense fallback={null}>
+                <Portal />
+              </Suspense>
+            }
+          />
         ))}
         <Route
           path="*"
