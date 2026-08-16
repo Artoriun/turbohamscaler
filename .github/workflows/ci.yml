@@ -122,7 +122,8 @@ jobs:
         run: npm run prerender
         env:
           VITE_BASE: ${{ env.BASE_PATH }}
-          BASE_PATH: ${{ env.BASE_PATH }}
+          # Origin only — the path comes from the build's own base. See scripts/prerender.mjs.
+          SITE_URL: https://${{ github.repository_owner }}.github.io
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
