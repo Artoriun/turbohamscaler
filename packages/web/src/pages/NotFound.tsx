@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import mascot from '../assets/turboham-evolution.gif';
+import Mascot from '../components/Mascot';
 import { pathFor, resolveLang, useT } from '../i18n';
 
 export default function NotFound() {
@@ -9,7 +9,7 @@ export default function NotFound() {
   return (
     <section className="centre-block">
       {/* Room for the full animation here, unlike the header. */}
-      <img className="hero-mascot" src={mascot} width={210} height={203} alt="" />
+      <Mascot art="evolution" className="hero-mascot" width={210} height={203} alt="" />
       <h1>{t.notFound.title}</h1>
       <p className="muted">{t.notFound.body}</p>
       <Link className="button" to={pathFor(lang, '/')}>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import mascot from '../assets/turboham-evolution.gif';
+import Mascot from '../components/Mascot';
 import { pathFor, resolveLang, useT } from '../i18n';
 
 /**
@@ -47,9 +47,9 @@ export default function Home() {
             {t.home.demoSignIn} <code>ada@example.com</code> · <code>hamster-wheel-9000</code>
           </p>
         </div>
-        <img
+        <Mascot
+          art="evolution"
           className="hero-mascot"
-          src={mascot}
           // Intrinsic size stated so the browser reserves the space before the GIF loads;
           // without it the hero reflows around it once it arrives and the heading jumps.
           width={280}

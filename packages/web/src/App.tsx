@@ -1,7 +1,7 @@
 import { APP_NAME, DEFAULT_LANG, LANGS } from '@hamscaler/shared';
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
-import mark from './assets/turboham-mark.gif';
 import LanguageToggle from './components/LanguageToggle';
+import Mascot from './components/Mascot';
 import ThemeToggle from './components/ThemeToggle';
 import { LanguageProvider, pathFor, resolveLang, useT } from './i18n';
 import Home from './pages/Home';
@@ -59,7 +59,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
       <header className="topbar">
         <div className="topbar-inner">
           <Link className="brand" to={home} aria-label={APP_NAME}>
-            <img className="brand-mark" src={mark} width={48} height={32} alt="" />
+            <Mascot art="mark" className="brand-mark" width={48} height={32} alt="" />
             <span className="brand-name">{APP_NAME}</span>
           </Link>
           <nav className="nav">
