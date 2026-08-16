@@ -81,8 +81,8 @@ describe('a signed-in user of another organisation', () => {
     assert.equal(res.status, 404);
   });
 
-  test('cannot add itself to the organisation', async () => {
-    const res = await as(mallory)(`${api.base}/api/orgs/${alice.orgId}/members`, {
+  test('cannot invite itself into the organisation', async () => {
+    const res = await as(mallory)(`${api.base}/api/orgs/${alice.orgId}/invitations`, {
       method: 'POST',
       body: JSON.stringify({ email: mallory.email, role: 'admin' }),
     });

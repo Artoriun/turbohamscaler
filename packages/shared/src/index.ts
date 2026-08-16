@@ -81,6 +81,24 @@ export interface Project {
   updatedAt: number;
 }
 
+/**
+ * A standing offer to join an organisation.
+ *
+ * There is no token on this type on purpose. The token is returned exactly once, by the call
+ * that creates the invitation, and only its hash is stored — so listing invitations later can
+ * never hand one out, and a copy of the database is not a set of live keys.
+ */
+export interface Invitation {
+  id: string;
+  orgId: string;
+  /** The address it was addressed to, as typed. Never checked against the user table. */
+  email: string;
+  role: Role;
+  createdAt: number;
+  expiresAt: number;
+  acceptedAt: number | null;
+}
+
 /** What `/api/me` answers: who you are and which organisations you can act in. */
 export interface Session {
   user: User;
@@ -97,6 +115,14 @@ export const SESSION_RENEW_UNDER_SECONDS = 3 * 24 * 60 * 60;
 
 /** Minimum password length accepted at sign-up. */
 export const MIN_PASSWORD_LENGTH = 10;
+
+/**
+ * How long an invitation stays acceptable.
+ *
+ * Short enough that a token found in an old inbox or chat log is usually already dead, long
+ * enough to survive someone being away for a week.
+ */
+export const INVITE_TTL_SECONDS = 7 * 24 * 60 * 60;
 
 export const LIMITS = {
   /** Sign-in attempts per address before the lockout window applies. */

@@ -334,6 +334,49 @@ button.link {
   }
 }
 
+/* Invitations sit inside the members panel: the same subject, so the same box. */
+.invites {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.invites .panel-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+/* The token is shown once and has to be copied, so it gets room to be selected rather than
+   being truncated into something you cannot read back. */
+.invite-token {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  display: grid;
+  gap: 8px;
+}
+
+.invite-token code {
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+}
+
+.invite-token button {
+  justify-self: start;
+}
+
+/* The arriving invitee's prompt, above everything else in the portal. */
+.panel.notice {
+  margin-bottom: 20px;
+  border-color: var(--accent);
+}
+
+.panel.notice h2 {
+  margin-top: 0;
+}
+
 /* ── public site ────────────────────────────────────────────────────────────────────── */
 
 a {

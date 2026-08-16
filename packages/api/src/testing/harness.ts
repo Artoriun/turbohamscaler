@@ -69,6 +69,32 @@ export async function signUp(
   };
 }
 
+/**
+ * Puts `guest` into `host`'s organisation, the only way in: `host` issues an invitation and
+ * `guest` accepts it.
+ *
+ * Two calls rather than one because that is the real flow — a test that reached into the
+ * database to add the membership would pass while the flow itself was broken.
+ */
+export async function invite(
+  base: string,
+  host: Actor,
+  guest: Actor,
+  role: 'member' | 'admin' = 'member',
+): Promise<void> {
+  const made = await as(host)(`${base}/api/orgs/${host.orgId}/invitations`, {
+    method: 'POST',
+    body: JSON.stringify({ email: guest.email, role }),
+  });
+  if (made.status !== 201) throw new Error(`invite failed: ${made.status} ${await made.text()}`);
+  const { token } = (await made.json()) as { token: string };
+
+  const accepted = await as(guest)(`${base}/api/invitations/${token}/accept`, { method: 'POST' });
+  if (accepted.status !== 201) {
+    throw new Error(`accept failed: ${accepted.status} ${await accepted.text()}`);
+  }
+}
+
 /** A fetch carrying an actor's session cookie, or none for an anonymous caller. */
 export function as(actor: Actor | null) {
   return (url: string, init: RequestInit = {}) =>

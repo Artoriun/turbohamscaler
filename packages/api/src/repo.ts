@@ -12,6 +12,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type {
+  Invitation,
   Membership,
   Organisation,
   OrganisationMembership,
@@ -79,6 +80,15 @@ export function createOrganisation(name: string, slug: string): Organisation {
   return { id, name, slug, createdAt };
 }
 
+/** One organisation by id. Used to name the organisation an invitation is for. */
+export function organisationById(id: string): Organisation | null {
+  const row = one<{ id: string; name: string; slug: string; created_at: number }>(
+    'SELECT id, name, slug, created_at FROM organisations WHERE id = ?',
+    id,
+  );
+  return row ? { id: row.id, name: row.name, slug: row.slug, createdAt: row.created_at } : null;
+}
+
 export function addMember(orgId: string, userId: string, role: Role): Membership {
   const createdAt = now();
   run(
@@ -127,6 +137,102 @@ export function membersOf(orgId: string): (User & { role: Role })[] {
       ORDER BY m.created_at`,
     orgId,
   ).map((r) => ({ ...toUser(r), role: r.role }));
+}
+
+// ── invitations (tenant-owned) ───────────────────────────────────────────────────────────
+
+interface InvitationRow {
+  id: string;
+  org_id: string;
+  email: string;
+  role: Role;
+  created_at: number;
+  expires_at: number;
+  accepted_at: number | null;
+}
+
+const toInvitation = (r: InvitationRow): Invitation => ({
+  id: r.id,
+  orgId: r.org_id,
+  email: r.email,
+  role: r.role,
+  createdAt: r.created_at,
+  expiresAt: r.expires_at,
+  acceptedAt: r.accepted_at,
+});
+
+/**
+ * Records an invitation and returns it with the token, which is the only time the token
+ * exists outside the caller's hands — only its hash is stored.
+ *
+ * Throws on the unique index when the organisation already has an outstanding invitation for
+ * the address; the route turns that into a 409 rather than quietly issuing a second token.
+ */
+export function createInvitation(
+  orgId: string,
+  email: string,
+  role: Role,
+  invitedBy: string,
+  tokenHash: string,
+  ttlSeconds: number,
+): Invitation {
+  const id = randomUUID();
+  const createdAt = now();
+  const expiresAt = createdAt + ttlSeconds * 1000;
+  run(
+    `INSERT INTO invitations
+       (id, org_id, email, email_key, role, token_hash, invited_by, created_at, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    id,
+    orgId,
+    email,
+    email.toLowerCase(),
+    role,
+    tokenHash,
+    invitedBy,
+    createdAt,
+    expiresAt,
+  );
+  return { id, orgId, email, role, createdAt, expiresAt, acceptedAt: null };
+}
+
+export function listInvitations(orgId: string): Invitation[] {
+  return all<InvitationRow>(
+    'SELECT * FROM invitations WHERE org_id = ? ORDER BY created_at DESC',
+    orgId,
+  ).map(toInvitation);
+}
+
+export function revokeInvitation(orgId: string, id: string): boolean {
+  return (
+    run('DELETE FROM invitations WHERE org_id = ? AND id = ? AND accepted_at IS NULL', orgId, id) >
+    0
+  );
+}
+
+/**
+ * The invitation a token refers to, or null.
+ *
+ * tenancy-exempt: the token is what identifies the organisation. Whoever is accepting is by
+ * definition not yet a member, so there is no orgId to check them against — requiring one
+ * here would mean the client naming the organisation it wants to join, which is a worse API
+ * and no safer. The row's own org_id is what every call after this one is scoped to.
+ */
+export function findInvitationByTokenHash(tokenHash: string): Invitation | null {
+  const row = one<InvitationRow>('SELECT * FROM invitations WHERE token_hash = ?', tokenHash);
+  return row ? toInvitation(row) : null;
+}
+
+/** Marks an invitation used. Returns false if it was already accepted, which makes it single-use. */
+export function markInvitationAccepted(orgId: string, id: string): boolean {
+  return (
+    run(
+      'UPDATE invitations SET accepted_at = ? WHERE org_id = ? AND id = ? AND accepted_at IS NULL',
+      now(),
+      orgId,
+      id,
+    ) > 0
+  );
 }
 
 // ── projects (tenant-owned) ──────────────────────────────────────────────────────────────

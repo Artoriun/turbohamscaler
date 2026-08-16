@@ -72,6 +72,9 @@ test('wrong credentials are refused without saying which part was wrong', async 
   const email = unique();
   await signUp(page, email);
   await page.getByRole('button', { name: 'Sign out' }).click();
+  // Wait for the sign-in form before typing into it. Without this the fills raced the sign-out
+  // and landed in the portal that was still on screen, so the form submitted empty.
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill('not-the-password');
@@ -202,4 +205,40 @@ test('leaving the portal keeps the language you were reading', async ({ page }) 
   await page.getByRole('link', { name: '概要に戻る' }).click();
   await expect(page).toHaveURL(/\/ja$/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'ja');
+});
+
+test('an invitation is the way into someone else’s organisation', async ({ browser }) => {
+  const hostEmail = unique();
+  const guestEmail = unique();
+
+  const hostCtx = await browser.newContext();
+  const host = await hostCtx.newPage();
+  await signUp(host, hostEmail);
+
+  await host.getByLabel('Address to invite').fill(guestEmail);
+  await host.getByRole('button', { name: 'Create invitation' }).click();
+
+  // The token is rendered once, by the reply that created it — there is no second chance to
+  // read it, so the test takes it from the page exactly as a person would.
+  const link = await host.locator('.invite-token code').innerText();
+  expect(link).toContain('invite=');
+  await expect(host.getByText(guestEmail)).toBeVisible();
+
+  const guestCtx = await browser.newContext();
+  const guest = await guestCtx.newPage();
+  await signUp(guest, guestEmail);
+
+  await guest.goto(link);
+  await guest.getByRole('button', { name: 'Accept invitation' }).click();
+
+  // Both organisations are now reachable: their own, and the one they were invited to.
+  const picker = guest.getByRole('combobox', { name: 'Organisation' });
+  await expect(picker.locator('option')).toHaveCount(2);
+
+  // And the token is spent — opening the link again offers nothing.
+  await guest.goto(link);
+  await expect(guest.getByRole('button', { name: 'Accept invitation' })).toHaveCount(0);
+
+  await hostCtx.close();
+  await guestCtx.close();
 });
