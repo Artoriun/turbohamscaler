@@ -123,6 +123,18 @@ export interface Session {
   organisations: OrganisationMembership[];
 }
 
+/**
+ * The demo account, in one place.
+ *
+ * The seed script creates it and the public page advertises it, and those two lived in
+ * different packages with the address written out in both — so renaming the demo hamster left
+ * the marketing page telling visitors to sign in as somebody who no longer exists.
+ */
+export const DEMO_SIGN_IN = {
+  email: 'turboham@example.com',
+  password: 'hamster-wheel-9000',
+} as const;
+
 // ── limits ───────────────────────────────────────────────────────────────────────────────
 
 /** How long a session cookie stays valid without being renewed. */

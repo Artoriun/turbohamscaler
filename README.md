@@ -47,9 +47,10 @@ npm run db:seed   # a demo tenant, so the app opens on something
 npm run dev       # web on 3410, API on 4410
 ```
 
-Sign in as `ada@example.com` or `grace@example.com`, password `hamster-wheel-9000`. Ada runs a
-wheelwright's; Grace is in bedding. They are in separate organisations on purpose: sign in as
-one and the other's data is simply not there — no filter, no flag, nothing to forget.
+Sign in as `turboham@example.com` or `teemo@example.com`, password `hamster-wheel-9000`.
+TurboHam runs a wheelwright's; Teemo is in bedding. They are in separate organisations on
+purpose: sign in as one and the other's data is simply not there — no filter, no flag, nothing
+to forget.
 
 No `.env` is needed to run it. For production see [`.env.example`](.env.example).
 

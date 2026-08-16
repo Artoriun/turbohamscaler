@@ -1,3 +1,4 @@
+import { DEMO_SIGN_IN } from '@hamscaler/shared';
 import { Link, useLocation } from 'react-router-dom';
 import Mascot from '../components/Mascot';
 import { pathFor, resolveLang, useT } from '../i18n';
@@ -44,7 +45,8 @@ export default function Home() {
             </a>
           </div>
           <p className="muted small">
-            {t.home.demoSignIn} <code>ada@example.com</code> · <code>hamster-wheel-9000</code>
+            {t.home.demoSignIn} <code>{DEMO_SIGN_IN.email}</code> ·{' '}
+            <code>{DEMO_SIGN_IN.password}</code>
           </p>
         </div>
         <Mascot

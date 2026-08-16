@@ -8,6 +8,7 @@
  * Idempotent, so running it twice is harmless.
  */
 
+import { DEMO_SIGN_IN } from '@hamscaler/shared';
 import { hashPassword } from '../auth.ts';
 import {
   addMember,
@@ -18,24 +19,24 @@ import {
 } from '../repo.ts';
 import { migrate } from './migrate.ts';
 
-export const DEMO_PASSWORD = 'hamster-wheel-9000';
+export const DEMO_PASSWORD = DEMO_SIGN_IN.password;
 
 const PEOPLE = [
   {
-    email: 'ada@example.com',
-    name: 'Ada',
-    org: 'Ada & Co Wheelwrights',
-    slug: 'ada-co-wheelwrights',
+    email: DEMO_SIGN_IN.email,
+    name: 'TurboHam',
+    org: 'TurboHam & Co Wheelwrights',
+    slug: 'turboham-co-wheelwrights',
     projects: [
       ['Dig a second tunnel', 'The first one is getting crowded.'],
       ['Audit the seed stash', ''],
     ],
   },
   {
-    email: 'grace@example.com',
-    name: 'Grace',
-    org: 'Grace Industries (Bedding Division)',
-    slug: 'grace-industries',
+    email: 'teemo@example.com',
+    name: 'Teemo',
+    org: 'Teemo Industries (Bedding Division)',
+    slug: 'teemo-industries',
     projects: [
       ['Reorganise the cheek pouches', 'Left for perishables, right for everything else.'],
       ['Nightly wheel maintenance', ''],
