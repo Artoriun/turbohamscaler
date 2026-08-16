@@ -6,7 +6,8 @@ A **TurboRepo** starter for a multi-tenant web app: accounts, organisations, rol
 per-tenant data, with the isolation checks that keep them honest.
 
 It runs on nothing. No account, no container, no native build — `npm install && npm run dev`
-gives you a working app with a seeded demo tenant. TurboHam scales by adding wheels.
+gives you a working app with a seeded demo tenant. TurboHam scales by adding wheels; the rest of
+this is the bit nobody enjoys writing twice.
 
 [![CI](https://github.com/Artoriun/turbohamscaler/actions/workflows/ci.yml/badge.svg)](https://github.com/Artoriun/turbohamscaler/actions/workflows/ci.yml)
 
@@ -46,8 +47,9 @@ npm run db:seed   # a demo tenant, so the app opens on something
 npm run dev       # web on 3410, API on 4410
 ```
 
-Sign in as `ada@example.com` or `grace@example.com`, password `hamster-wheel-9000`. They are
-in separate organisations on purpose: sign in as one and the other's data is simply not there.
+Sign in as `ada@example.com` or `grace@example.com`, password `hamster-wheel-9000`. Ada runs a
+wheelwright's; Grace is in bedding. They are in separate organisations on purpose: sign in as
+one and the other's data is simply not there — no filter, no flag, nothing to forget.
 
 No `.env` is needed to run it. For production see [`.env.example`](.env.example).
 

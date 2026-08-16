@@ -51,6 +51,12 @@ jobs:
       - name: Unit tests
         run: npm run test:unit
 
+      # The first command in the README's quick start, and nothing ran it — so `migrate` losing
+      # its await during the async conversion broke a fresh clone's very first step, silently,
+      # for as long as nobody tried it.
+      - name: Seed a fresh database
+        run: npm run db:reset
+
       # The same assertions against the Worker and a local D1, so "runs on both runtimes" is
       # something the build checks rather than something the README claims. Entirely local —
       # wrangler runs on Miniflare, so this needs no Cloudflare account.

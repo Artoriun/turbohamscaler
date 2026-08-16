@@ -21,12 +21,33 @@ import { migrate } from './migrate.ts';
 export const DEMO_PASSWORD = 'hamster-wheel-9000';
 
 const PEOPLE = [
-  { email: 'ada@example.com', name: 'Ada', org: 'Ada & Co', slug: 'ada-co' },
-  { email: 'grace@example.com', name: 'Grace', org: 'Grace Industries', slug: 'grace-industries' },
+  {
+    email: 'ada@example.com',
+    name: 'Ada',
+    org: 'Ada & Co Wheelwrights',
+    slug: 'ada-co-wheelwrights',
+    projects: [
+      ['Dig a second tunnel', 'The first one is getting crowded.'],
+      ['Audit the seed stash', ''],
+    ],
+  },
+  {
+    email: 'grace@example.com',
+    name: 'Grace',
+    org: 'Grace Industries (Bedding Division)',
+    slug: 'grace-industries',
+    projects: [
+      ['Reorganise the cheek pouches', 'Left for perishables, right for everything else.'],
+      ['Nightly wheel maintenance', ''],
+    ],
+  },
 ] as const;
 
 export async function seed(log: (msg: string) => void = console.log): Promise<void> {
-  migrate(() => {});
+  // Awaited. migrate became async when the query helpers did, and without this the seed's own
+  // statements raced the schema being created — "disk I/O error" or "SQL logic error", depending
+  // on which one lost.
+  await migrate(() => {});
   if (await findUserByEmail(PEOPLE[0].email)) {
     log('✓ demo data already present');
     return;
@@ -37,15 +58,12 @@ export async function seed(log: (msg: string) => void = console.log): Promise<vo
     const user = await createUser(person.email, person.name, password);
     const org = await createOrganisation(person.org, person.slug);
     await addMember(org.id, user.id, 'owner');
-    await createProject(
-      org.id,
-      `${person.name}'s first project`,
-      'Seeded so the list is not empty.',
-    );
-    await createProject(org.id, 'Second project', '');
+    for (const [name, notes] of person.projects) {
+      await createProject(org.id, name, notes);
+    }
   }
 
-  log(`✓ seeded ${PEOPLE.length} organisations`);
+  log(`✓ seeded ${PEOPLE.length} organisations, two hamsters, four projects`);
   log(`  sign in as ${PEOPLE.map((p) => p.email).join(' or ')} — password: ${DEMO_PASSWORD}`);
 }
 
