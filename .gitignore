@@ -9,8 +9,6 @@ dist/
 .DS_Store
 playwright-report/
 test-results/
-packages/web/public/sitemap.xml
-packages/web/public/robots.txt
 
 # Lighthouse reports written by scripts/check-lighthouse.mjs
 lighthouse-*.json
