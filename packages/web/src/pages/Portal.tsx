@@ -1,5 +1,12 @@
-import type { Invitation, Organisation } from '@hamscaler/shared';
-import { APP_NAME, type OrganisationMembership, type Project, type Role } from '@hamscaler/shared';
+import {
+  APP_NAME,
+  type Invitation,
+  type Organisation,
+  type OrganisationMembership,
+  type Project,
+  ROLES,
+  type Role,
+} from '@hamscaler/shared';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import LanguageToggle from '../components/LanguageToggle';
@@ -17,7 +24,9 @@ import {
   apiMembers,
   apiOpenInvitation,
   apiProjects,
+  apiRemoveMember,
   apiRevokeInvitation,
+  apiSetMemberRole,
   apiSignIn,
   apiSignOut,
   apiSignUp,
@@ -157,7 +166,12 @@ export default function Portal() {
             </div>
             <div className="columns">
               <Projects orgId={org.id} canDelete={org.role !== 'member'} />
-              <Members orgId={org.id} canInvite={org.role !== 'member'} />
+              <Members
+                orgId={org.id}
+                canInvite={org.role !== 'member'}
+                myRole={org.role}
+                onChanged={load}
+              />
             </div>
           </>
         ) : null}
@@ -451,11 +465,22 @@ function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
   );
 }
 
-function Members({ orgId, canInvite }: { orgId: string; canInvite: boolean }) {
+function Members({
+  orgId,
+  canInvite,
+  myRole,
+  onChanged,
+}: {
+  orgId: string;
+  canInvite: boolean;
+  myRole: Role;
+  onChanged: () => void;
+}) {
   const t = useT();
   const [members, setMembers] = useState<{ id: string; name: string; email: string; role: Role }[]>(
     [],
   );
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let live = true;
@@ -466,6 +491,23 @@ function Members({ orgId, canInvite }: { orgId: string; canInvite: boolean }) {
       live = false;
     };
   }, [orgId]);
+
+  // The same handling for both changes: the server owns the rules — an admin may not outrank
+  // itself, and the last owner may not be demoted or removed — so the client asks and reports
+  // what it is told rather than keeping a second copy of them that can disagree.
+  const apply = (work: Promise<{ members: (typeof members)[number][] }>) => {
+    setError('');
+    work
+      .then(({ members: list }) => {
+        setMembers(list);
+        onChanged();
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.code === 'last-owner') setError(t.portal.lastOwner);
+        else if (err instanceof ApiError && err.status !== 401)
+          setError(t.portal.memberChangeFailed);
+      });
+  };
 
   return (
     <section className="panel">
@@ -480,10 +522,41 @@ function Members({ orgId, canInvite }: { orgId: string; canInvite: boolean }) {
               <span className="title">{m.name}</span>
               <span className="meta">{m.email}</span>
             </div>
-            <RoleBadge role={m.role} />
+            {canInvite ? (
+              <>
+                <label className="sr-only" htmlFor={`role-${m.id}`}>
+                  {fill(t.portal.memberRole, { name: m.name })}
+                </label>
+                <select
+                  id={`role-${m.id}`}
+                  className="role-select"
+                  value={m.role}
+                  onChange={(e) => apply(apiSetMemberRole(orgId, m.id, e.target.value as Role))}
+                >
+                  {ROLES.map((r) => (
+                    // Only an owner can hand out ownership; showing the option to an admin
+                    // would offer a change the server is going to refuse.
+                    <option key={r} value={r} disabled={r === 'owner' && myRole !== 'owner'}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="danger"
+                  aria-label={fill(t.portal.memberRemoveNamed, { name: m.name })}
+                  onClick={() => apply(apiRemoveMember(orgId, m.id))}
+                >
+                  {t.portal.memberRemove}
+                </button>
+              </>
+            ) : (
+              <RoleBadge role={m.role} />
+            )}
           </li>
         ))}
       </ul>
+      {error ? <p className="error">{error}</p> : null}
       <p className="muted small">{t.portal.rolesNote}</p>
       {canInvite ? <Invitations orgId={orgId} /> : null}
     </section>

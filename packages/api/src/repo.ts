@@ -139,6 +139,30 @@ export function membersOf(orgId: string): (User & { role: Role })[] {
   ).map((r) => ({ ...toUser(r), role: r.role }));
 }
 
+/**
+ * How many owners an organisation has.
+ *
+ * Every removal and demotion is checked against this. An organisation with no owner is one
+ * nobody can administer any more — not a state to arrive at by removing one person too many.
+ */
+export function ownerCount(orgId: string): number {
+  const row = one<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM memberships WHERE org_id = ? AND role = 'owner'",
+    orgId,
+  );
+  return row?.n ?? 0;
+}
+
+export function setMemberRole(orgId: string, userId: string, role: Role): boolean {
+  return (
+    run('UPDATE memberships SET role = ? WHERE org_id = ? AND user_id = ?', role, orgId, userId) > 0
+  );
+}
+
+export function removeMember(orgId: string, userId: string): boolean {
+  return run('DELETE FROM memberships WHERE org_id = ? AND user_id = ?', orgId, userId) > 0;
+}
+
 // ── invitations (tenant-owned) ───────────────────────────────────────────────────────────
 
 interface InvitationRow {

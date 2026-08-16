@@ -50,7 +50,11 @@ for (const file of files) {
   const rel = file.slice(`${API}/`.length);
   if (SQL_ALLOWED.some((a) => rel === a)) continue;
   const src = readFileSync(file, 'utf8');
-  if (/\b(SELECT|INSERT|UPDATE|DELETE)\b\s/i.test(src)) {
+  // String literals only. Scanning the whole file for the bare words caught prose twice — a
+  // comment reading "a self-delete on the one above" is not a query, and rewording English to
+  // appease a regular expression is how a check stops being believed.
+  const literals = src.match(/(['"`])[\s\S]*?\1/g) ?? [];
+  if (literals.some((lit) => /^(['"`])\s*(SELECT|INSERT INTO|UPDATE|DELETE FROM)\b/i.test(lit))) {
     problems.push(
       `${file}: contains SQL. Tenant queries belong in repo.ts, behind a function that takes orgId.`,
     );

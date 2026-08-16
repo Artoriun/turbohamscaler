@@ -70,7 +70,9 @@ npm run db:reset       # delete the local database and reseed
 
 - **Accounts** — sign up, sign in, sign out, sign out everywhere. Passwords hashed with
   scrypt; sessions are opaque ids in a table, so revoking one actually revokes it
-- **Organisations** with `member` / `admin` / `owner` roles, and per-tenant projects
+- **Organisations** with `member` / `admin` / `owner` roles, and per-tenant projects. Roles can
+  be changed, members removed, and anyone can leave — except the last owner, because an
+  organisation with no owner is one nobody can administer their way out of
 - **Invitations** — an admin issues a single-use token addressed to a person, who accepts it
   themselves. Only the token's hash is stored, and nothing is ever checked against the account
   list, so inviting cannot be used to ask which addresses are registered
