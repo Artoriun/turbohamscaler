@@ -16,8 +16,7 @@ import {
   ROLES,
   type Role,
 } from '@hamscaler/shared';
-import cookieParser from 'cookie-parser';
-import express, { type Express } from 'express';
+import { Hono } from 'hono';
 import {
   createSession,
   destroyAllSessions,
@@ -26,8 +25,14 @@ import {
   SESSION_COOKIE,
   verifyPassword,
 } from './auth.ts';
-import { clearSessionCookie, setSessionCookie } from './cookies.ts';
-import { type AuthedRequest, param, requireOrg, requireUser } from './middleware.ts';
+import { clearSessionCookie, readSessionCookie, setSessionCookie } from './cookies.ts';
+import {
+  type AppContext,
+  type AuthVariables,
+  param,
+  requireOrg,
+  requireUser,
+} from './middleware.ts';
 import {
   addMember,
   createInvitation,
@@ -62,8 +67,8 @@ import { clearAttempts, recordAttempt } from './signInAttempts.ts';
  * The label is stored alongside the id because an id stops meaning anything once the account is
  * gone, and the record has to outlive its subject to be worth keeping.
  */
-const actorOf = async (req: express.Request) => {
-  const id = (req as AuthedRequest).userId as string;
+const actorOf = async (c: AppContext) => {
+  const id = c.get('userId');
   const user = await findUserById(id);
   return { id, label: user ? `${user.name} <${user.email}>` : id };
 };
@@ -92,32 +97,29 @@ const slugify = (s: string) =>
     .replace(/^-|-$/g, '')
     .slice(0, 40);
 
-export function createApp(): Express {
-  const app = express();
-  app.use(express.json({ limit: '100kb' }));
-  app.use(cookieParser());
+export function createApp(): Hono<AuthVariables> {
+  const app = new Hono<AuthVariables>();
 
-  app.get('/health', async (_req, res) => {
-    res.json({ ok: true });
+  app.get('/health', async (c) => {
+    return c.json({ ok: true });
   });
 
   // ── auth ───────────────────────────────────────────────────────────────────────────────
 
-  app.post('/api/auth/sign-up', async (req, res) => {
-    const { email, name, password } = req.body ?? {};
+  app.post('/api/auth/sign-up', async (c) => {
+    const { email, name, password } = await c.req
+      .json()
+      .catch(() => ({}) as Record<string, unknown>);
     if (typeof email !== 'string' || !email.includes('@') || typeof name !== 'string' || !name) {
-      res.status(400).json({ error: 'invalid-details' });
-      return;
+      return c.json({ error: 'invalid-details' }, 400);
     }
     if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
-      res.status(400).json({ error: 'weak-password', minLength: MIN_PASSWORD_LENGTH });
-      return;
+      return c.json({ error: 'weak-password', minLength: MIN_PASSWORD_LENGTH }, 400);
     }
     if (await findUserByEmail(email)) {
       // Same shape as success would take a step longer, so this is an enumeration oracle
       // either way; saying so plainly is more useful than pretending otherwise.
-      res.status(409).json({ error: 'email-taken' });
-      return;
+      return c.json({ error: 'email-taken' }, 409);
     }
     const user = await createUser(email, name, await hashPassword(password));
     // A user with no organisation has nowhere to go, so sign-up creates one and makes them its
@@ -131,20 +133,18 @@ export function createApp(): Express {
     );
     await addMember(org.id, user.id, 'owner');
     const session = await createSession(user.id);
-    setSessionCookie(res, session.id, session.expiresAt);
-    res.status(201).json({ user, organisations: await organisationsFor(user.id) });
+    setSessionCookie(c, session.id, session.expiresAt);
+    return c.json({ user, organisations: await organisationsFor(user.id) }, 201);
   });
 
-  app.post('/api/auth/sign-in', async (req, res) => {
-    const { email, password } = req.body ?? {};
+  app.post('/api/auth/sign-in', async (c) => {
+    const { email, password } = await c.req.json().catch(() => ({}) as Record<string, unknown>);
     if (typeof email !== 'string' || typeof password !== 'string') {
-      res.status(400).json({ error: 'invalid-details' });
-      return;
+      return c.json({ error: 'invalid-details' }, 400);
     }
     const attempt = await recordAttempt(email);
     if (attempt.lockedOut) {
-      res.status(429).json({ error: 'too-many-attempts', retryAfterMs: attempt.retryAfterMs });
-      return;
+      return c.json({ error: 'too-many-attempts', retryAfterMs: attempt.retryAfterMs }, 429);
     }
     const user = await findUserByEmail(email);
     // Verified even when the user is unknown, against a throwaway hash, so a wrong address and
@@ -153,43 +153,41 @@ export function createApp(): Express {
     const stored = user?.password ?? (await hashPassword('no-such-user'));
     const ok = await verifyPassword(password, stored);
     if (!user || !ok) {
-      res.status(401).json({ error: 'invalid-credentials' });
-      return;
+      return c.json({ error: 'invalid-credentials' }, 401);
     }
     await clearAttempts(email);
     const session = await createSession(user.id);
-    setSessionCookie(res, session.id, session.expiresAt);
-    res.json({ user, organisations: await organisationsFor(user.id) });
+    setSessionCookie(c, session.id, session.expiresAt);
+    return c.json({ user, organisations: await organisationsFor(user.id) });
   });
 
-  app.post('/api/auth/sign-out', requireUser, async (req, res) => {
-    const id = req.cookies?.[SESSION_COOKIE];
+  app.post('/api/auth/sign-out', requireUser, async (c) => {
+    const id = readSessionCookie(c);
     if (id) destroySession(id);
-    clearSessionCookie(res);
-    res.json({ ok: true });
+    clearSessionCookie(c);
+    return c.json({ ok: true });
   });
 
   /** Ends every session for this user, on every device. */
-  app.post('/api/auth/sign-out-everywhere', requireUser, async (req, res) => {
-    const count = destroyAllSessions((req as AuthedRequest).userId as string);
-    clearSessionCookie(res);
-    res.json({ ok: true, sessions: count });
+  app.post('/api/auth/sign-out-everywhere', requireUser, async (c) => {
+    const count = destroyAllSessions(c.get('userId'));
+    clearSessionCookie(c);
+    return c.json({ ok: true, sessions: count });
   });
 
-  app.get('/api/me', requireUser, async (req, res) => {
-    const userId = (req as AuthedRequest).userId as string;
+  app.get('/api/me', requireUser, async (c) => {
+    const userId = c.get('userId');
     const user = await findUserById(userId);
     if (!user) {
-      res.status(401).json({ error: 'not-signed-in' });
-      return;
+      return c.json({ error: 'not-signed-in' }, 401);
     }
-    res.json({ user, organisations: await organisationsFor(userId) });
+    return c.json({ user, organisations: await organisationsFor(userId) });
   });
 
   // ── organisation members ───────────────────────────────────────────────────────────────
 
-  app.get('/api/orgs/:orgId/members', requireUser, requireOrg('member'), async (req, res) => {
-    res.json({ members: await membersOf((req as AuthedRequest).orgId as string) });
+  app.get('/api/orgs/:orgId/members', requireUser, requireOrg('member'), async (c) => {
+    return c.json({ members: await membersOf(c.get('orgId')) });
   });
 
   /**
@@ -199,81 +197,63 @@ export function createApp(): Express {
    * change the role of someone ranked above you, and only an owner can make another owner.
    * Without the first, an admin could demote the owner who appointed them.
    */
-  app.patch(
-    '/api/orgs/:orgId/members/:userId',
-    requireUser,
-    requireOrg('admin'),
-    async (req, res) => {
-      const orgId = (req as AuthedRequest).orgId as string;
-      const actorRole = (req as AuthedRequest).role as Role;
-      const targetId = param(req, 'userId');
-      const { role } = req.body ?? {};
+  app.patch('/api/orgs/:orgId/members/:userId', requireUser, requireOrg('admin'), async (c) => {
+    const orgId = c.get('orgId');
+    const actorRole = c.get('role');
+    const targetId = param(c, 'userId');
+    const { role } = await c.req.json().catch(() => ({}) as Record<string, unknown>);
 
-      if (!targetId || !ROLES.includes(role)) {
-        res.status(400).json({ error: 'invalid-details' });
-        return;
-      }
-      const targetRole = await roleIn(orgId, targetId);
-      if (!targetRole) {
-        res.status(404).json({ error: 'not-found' });
-        return;
-      }
-      if (!hasRole(actorRole, targetRole) || (role === 'owner' && actorRole !== 'owner')) {
-        res.status(403).json({ error: 'insufficient-role' });
-        return;
-      }
-      // Demoting the last owner leaves an organisation nobody can administer.
-      if (targetRole === 'owner' && role !== 'owner' && (await ownerCount(orgId)) === 1) {
-        res.status(409).json({ error: 'last-owner' });
-        return;
-      }
-      await setMemberRole(orgId, targetId, role as Role);
-      await recordAudit(
-        orgId,
-        'member.role-changed',
-        await actorOf(req),
-        (await findUserById(targetId))?.email ?? targetId,
-        `${targetRole} → ${role}`,
-      );
-      res.json({ members: await membersOf(orgId) });
-    },
-  );
+    if (!targetId || !ROLES.includes(role)) {
+      return c.json({ error: 'invalid-details' }, 400);
+    }
+    const targetRole = await roleIn(orgId, targetId);
+    if (!targetRole) {
+      return c.json({ error: 'not-found' }, 404);
+    }
+    if (!hasRole(actorRole, targetRole) || (role === 'owner' && actorRole !== 'owner')) {
+      return c.json({ error: 'insufficient-role' }, 403);
+    }
+    // Demoting the last owner leaves an organisation nobody can administer.
+    if (targetRole === 'owner' && role !== 'owner' && (await ownerCount(orgId)) === 1) {
+      return c.json({ error: 'last-owner' }, 409);
+    }
+    await setMemberRole(orgId, targetId, role as Role);
+    await recordAudit(
+      orgId,
+      'member.role-changed',
+      await actorOf(c),
+      (await findUserById(targetId))?.email ?? targetId,
+      `${targetRole} → ${role}`,
+    );
+    return c.json({ members: await membersOf(orgId) });
+  });
 
-  app.delete(
-    '/api/orgs/:orgId/members/:userId',
-    requireUser,
-    requireOrg('admin'),
-    async (req, res) => {
-      const orgId = (req as AuthedRequest).orgId as string;
-      const actorRole = (req as AuthedRequest).role as Role;
-      const targetId = param(req, 'userId');
-      if (!targetId) {
-        res.status(400).json({ error: 'invalid-details' });
-        return;
-      }
-      const targetRole = await roleIn(orgId, targetId);
-      if (!targetRole) {
-        res.status(404).json({ error: 'not-found' });
-        return;
-      }
-      if (!hasRole(actorRole, targetRole)) {
-        res.status(403).json({ error: 'insufficient-role' });
-        return;
-      }
-      if (targetRole === 'owner' && (await ownerCount(orgId)) === 1) {
-        res.status(409).json({ error: 'last-owner' });
-        return;
-      }
-      await removeMember(orgId, targetId);
-      await recordAudit(
-        orgId,
-        'member.removed',
-        await actorOf(req),
-        (await findUserById(targetId))?.email ?? targetId,
-      );
-      res.json({ members: await membersOf(orgId) });
-    },
-  );
+  app.delete('/api/orgs/:orgId/members/:userId', requireUser, requireOrg('admin'), async (c) => {
+    const orgId = c.get('orgId');
+    const actorRole = c.get('role');
+    const targetId = param(c, 'userId');
+    if (!targetId) {
+      return c.json({ error: 'invalid-details' }, 400);
+    }
+    const targetRole = await roleIn(orgId, targetId);
+    if (!targetRole) {
+      return c.json({ error: 'not-found' }, 404);
+    }
+    if (!hasRole(actorRole, targetRole)) {
+      return c.json({ error: 'insufficient-role' }, 403);
+    }
+    if (targetRole === 'owner' && (await ownerCount(orgId)) === 1) {
+      return c.json({ error: 'last-owner' }, 409);
+    }
+    await removeMember(orgId, targetId);
+    await recordAudit(
+      orgId,
+      'member.removed',
+      await actorOf(c),
+      (await findUserById(targetId))?.email ?? targetId,
+    );
+    return c.json({ members: await membersOf(orgId) });
+  });
 
   /**
    * Leave an organisation.
@@ -282,18 +262,17 @@ export function createApp(): Express {
    * permissions: removing somebody else is an admin's job, and leaving is everyone's. Sharing a
    * route would mean the role gate could not sit in the middleware.
    */
-  app.post('/api/orgs/:orgId/leave', requireUser, requireOrg('member'), async (req, res) => {
-    const orgId = (req as AuthedRequest).orgId as string;
-    const userId = (req as AuthedRequest).userId as string;
-    if ((req as AuthedRequest).role === 'owner' && (await ownerCount(orgId)) === 1) {
+  app.post('/api/orgs/:orgId/leave', requireUser, requireOrg('member'), async (c) => {
+    const orgId = c.get('orgId');
+    const userId = c.get('userId');
+    if (c.get('role') === 'owner' && (await ownerCount(orgId)) === 1) {
       // Hand it over first. Leaving would strand every other member.
-      res.status(409).json({ error: 'last-owner' });
-      return;
+      return c.json({ error: 'last-owner' }, 409);
     }
-    const who = await actorOf(req);
+    const who = await actorOf(c);
     await removeMember(orgId, userId);
     await recordAudit(orgId, 'member.left', who, who.label);
-    res.json({ organisations: await organisationsFor(userId) });
+    return c.json({ organisations: await organisationsFor(userId) });
   });
 
   /**
@@ -302,8 +281,8 @@ export function createApp(): Express {
    * Admin-only: it names people and what was done to them, which is more than a member needs
    * and more than they should be handed by default.
    */
-  app.get('/api/orgs/:orgId/audit', requireUser, requireOrg('admin'), async (req, res) => {
-    res.json({ events: await listAudit((req as AuthedRequest).orgId as string) });
+  app.get('/api/orgs/:orgId/audit', requireUser, requireOrg('admin'), async (c) => {
+    return c.json({ events: await listAudit(c.get('orgId')) });
   });
 
   // ── invitations ───────────────────────────────────────────────────────────────────────
@@ -316,53 +295,46 @@ export function createApp(): Express {
   //
   // Nothing below ever looks in the users table, so there is no answer to leak.
 
-  app.post('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), async (req, res) => {
-    const { email, role } = req.body ?? {};
+  app.post('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), async (c) => {
+    const { email, role } = await c.req.json().catch(() => ({}) as Record<string, unknown>);
     if (typeof email !== 'string' || !email.includes('@') || !['member', 'admin'].includes(role)) {
-      res.status(400).json({ error: 'invalid-details' });
-      return;
+      return c.json({ error: 'invalid-details' }, 400);
     }
-    const orgId = (req as AuthedRequest).orgId as string;
+    const orgId = c.get('orgId');
     const token = randomBytes(32).toString('base64url');
     try {
       const invitation = await createInvitation(
         orgId,
         email,
         role as Role,
-        (req as AuthedRequest).userId as string,
+        c.get('userId'),
         hashToken(token),
         INVITE_TTL_SECONDS,
       );
       // The only time the token leaves the server. There is no mail sender in this starter, so
       // the caller is responsible for delivering it; wire one in here and stop returning it.
-      await recordAudit(orgId, 'invitation.created', await actorOf(req), email, role as string);
-      res.status(201).json({ invitation, token });
+      await recordAudit(orgId, 'invitation.created', await actorOf(c), email, role as string);
+      return c.json({ invitation, token }, 201);
     } catch {
       // The partial unique index rejects a second outstanding invitation for the same address.
-      res.status(409).json({ error: 'already-invited' });
+      return c.json({ error: 'already-invited' }, 409);
     }
   });
 
-  app.get('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), async (req, res) => {
-    res.json({ invitations: await listInvitations((req as AuthedRequest).orgId as string) });
+  app.get('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), async (c) => {
+    return c.json({ invitations: await listInvitations(c.get('orgId')) });
   });
 
-  app.delete(
-    '/api/orgs/:orgId/invitations/:id',
-    requireUser,
-    requireOrg('admin'),
-    async (req, res) => {
-      const id = param(req, 'id');
-      const orgId = (req as AuthedRequest).orgId as string;
-      const invitation = (await listInvitations(orgId)).find((i) => i.id === id);
-      if (!id || !(await revokeInvitation(orgId, id))) {
-        res.status(404).json({ error: 'not-found' });
-        return;
-      }
-      await recordAudit(orgId, 'invitation.revoked', await actorOf(req), invitation?.email ?? id);
-      res.status(204).end();
-    },
-  );
+  app.delete('/api/orgs/:orgId/invitations/:id', requireUser, requireOrg('admin'), async (c) => {
+    const id = param(c, 'id');
+    const orgId = c.get('orgId');
+    const invitation = (await listInvitations(orgId)).find((i) => i.id === id);
+    if (!id || !(await revokeInvitation(orgId, id))) {
+      return c.json({ error: 'not-found' }, 404);
+    }
+    await recordAudit(orgId, 'invitation.revoked', await actorOf(c), invitation?.email ?? id);
+    return c.body(null, 204);
+  });
 
   /**
    * What an invitation is for, so the client can say "join X as an admin?" before acting.
@@ -370,118 +342,90 @@ export function createApp(): Express {
    * Behind a session deliberately: an anonymous endpoint here would let anyone guessing tokens
    * harvest organisation names. Holding a token is not the same as being allowed to read it.
    */
-  app.get('/api/invitations/:token', requireUser, async (req, res) => {
-    const invitation = await openInvitation(param(req, 'token'));
+  app.get('/api/invitations/:token', requireUser, async (c) => {
+    const invitation = await openInvitation(param(c, 'token'));
     if (!invitation) {
-      res.status(404).json({ error: 'no-such-invitation' });
-      return;
+      return c.json({ error: 'no-such-invitation' }, 404);
     }
     const org = await organisationById(invitation.orgId);
-    res.json({ invitation, organisation: org });
+    return c.json({ invitation, organisation: org });
   });
 
-  app.post('/api/invitations/:token/accept', requireUser, async (req, res) => {
-    const invitation = await openInvitation(param(req, 'token'));
+  app.post('/api/invitations/:token/accept', requireUser, async (c) => {
+    const invitation = await openInvitation(param(c, 'token'));
     if (!invitation) {
-      res.status(404).json({ error: 'no-such-invitation' });
-      return;
+      return c.json({ error: 'no-such-invitation' }, 404);
     }
-    const userId = (req as AuthedRequest).userId as string;
+    const userId = c.get('userId');
     const user = await findUserById(userId);
     // Addressed to a person, not to whoever ends up holding the link. Without this a forwarded
     // invitation is a way into someone else's organisation.
     if (!user || user.email.toLowerCase() !== invitation.email.toLowerCase()) {
-      res.status(403).json({ error: 'wrong-account' });
-      return;
+      return c.json({ error: 'wrong-account' }, 403);
     }
     if (await roleIn(invitation.orgId, userId)) {
       await markInvitationAccepted(invitation.orgId, invitation.id);
-      res.status(200).json({ organisations: await organisationsFor(userId) });
-      return;
+      return c.json({ organisations: await organisationsFor(userId) }, 200);
     }
     // Single-use: the write only touches a row that has not been accepted, so two requests
     // racing produce one membership and one 404 rather than two memberships.
     if (!(await markInvitationAccepted(invitation.orgId, invitation.id))) {
-      res.status(404).json({ error: 'no-such-invitation' });
-      return;
+      return c.json({ error: 'no-such-invitation' }, 404);
     }
     await addMember(invitation.orgId, userId, invitation.role);
     await recordAudit(
       invitation.orgId,
       'invitation.accepted',
-      await actorOf(req),
+      await actorOf(c),
       invitation.email,
       invitation.role,
     );
-    res.status(201).json({ organisations: await organisationsFor(userId) });
+    return c.json({ organisations: await organisationsFor(userId) }, 201);
   });
 
   // ── projects (tenant-owned) ────────────────────────────────────────────────────────────
 
-  app.get('/api/orgs/:orgId/projects', requireUser, requireOrg('member'), async (req, res) => {
-    res.json({ projects: await listProjects((req as AuthedRequest).orgId as string) });
+  app.get('/api/orgs/:orgId/projects', requireUser, requireOrg('member'), async (c) => {
+    return c.json({ projects: await listProjects(c.get('orgId')) });
   });
 
-  app.post('/api/orgs/:orgId/projects', requireUser, requireOrg('member'), async (req, res) => {
-    const { name, notes } = req.body ?? {};
+  app.post('/api/orgs/:orgId/projects', requireUser, requireOrg('member'), async (c) => {
+    const { name, notes } = await c.req.json().catch(() => ({}) as Record<string, unknown>);
     if (typeof name !== 'string' || !name.trim()) {
-      res.status(400).json({ error: 'invalid-details' });
-      return;
+      return c.json({ error: 'invalid-details' }, 400);
     }
     const project = await createProject(
-      (req as AuthedRequest).orgId as string,
+      c.get('orgId'),
       name.trim(),
       typeof notes === 'string' ? notes : '',
     );
-    res.status(201).json({ project });
+    return c.json({ project }, 201);
   });
 
-  app.get('/api/orgs/:orgId/projects/:id', requireUser, requireOrg('member'), async (req, res) => {
-    const project = await getProject(
-      (req as AuthedRequest).orgId as string,
-      param(req, 'id') as string,
-    );
+  app.get('/api/orgs/:orgId/projects/:id', requireUser, requireOrg('member'), async (c) => {
+    const project = await getProject(c.get('orgId'), param(c, 'id') as string);
     if (!project) {
-      res.status(404).json({ error: 'not-found' });
-      return;
+      return c.json({ error: 'not-found' }, 404);
     }
-    res.json({ project });
+    return c.json({ project });
   });
 
-  app.patch(
-    '/api/orgs/:orgId/projects/:id',
-    requireUser,
-    requireOrg('member'),
-    async (req, res) => {
-      const { name, notes } = req.body ?? {};
-      const project = await updateProject(
-        (req as AuthedRequest).orgId as string,
-        param(req, 'id') as string,
-        {
-          name: typeof name === 'string' ? name : undefined,
-          notes: typeof notes === 'string' ? notes : undefined,
-        },
-      );
-      if (!project) {
-        res.status(404).json({ error: 'not-found' });
-        return;
-      }
-      res.json({ project });
-    },
-  );
+  app.patch('/api/orgs/:orgId/projects/:id', requireUser, requireOrg('member'), async (c) => {
+    const { name, notes } = await c.req.json().catch(() => ({}) as Record<string, unknown>);
+    const project = await updateProject(c.get('orgId'), param(c, 'id') as string, {
+      name: typeof name === 'string' ? name : undefined,
+      notes: typeof notes === 'string' ? notes : undefined,
+    });
+    if (!project) {
+      return c.json({ error: 'not-found' }, 404);
+    }
+    return c.json({ project });
+  });
 
-  app.delete(
-    '/api/orgs/:orgId/projects/:id',
-    requireUser,
-    requireOrg('admin'),
-    async (req, res) => {
-      const gone = await deleteProject(
-        (req as AuthedRequest).orgId as string,
-        param(req, 'id') as string,
-      );
-      res.status(gone ? 200 : 404).json(gone ? { ok: true } : { error: 'not-found' });
-    },
-  );
+  app.delete('/api/orgs/:orgId/projects/:id', requireUser, requireOrg('admin'), async (c) => {
+    const gone = await deleteProject(c.get('orgId'), param(c, 'id') as string);
+    return gone ? c.json({ ok: true }) : c.json({ error: 'not-found' }, 404);
+  });
 
   return app;
 }

@@ -31,7 +31,7 @@ so run it locally to sign in.
 | | |
 | --- | --- |
 | **Front end** | React, TypeScript, Vite, React Router |
-| **Back end** | Express, SQLite (`node:sqlite`) |
+| **Back end** | Hono, SQLite (`node:sqlite`) or Cloudflare D1 |
 | **Tooling** | TurboRepo, Biome, Playwright |
 
 Three workspaces: `packages/web`, `packages/api`, `packages/shared`.
@@ -142,10 +142,32 @@ on every push to `main`. Set `BASE_PATH` at the top of `.github/workflows/ci.yml
 repository name, or `/` for a custom domain. A static host needs `404.html` to be the app
 itself, or a deep link never boots the router — the workflow copies `index.html` over it.
 
-**The app needs a server.** It is a plain Express app and fits the free tier of most hosts;
-[`render.yaml`](render.yaml) is a working blueprint for one. Point the front end at it with
-`VITE_API_URL` at build time. Served without one — as on the Pages deploy above — the portal
-says so rather than showing a sign-in form that cannot work.
+**The app needs a server, and runs on two kinds.** The routes are a [Hono](https://hono.dev)
+app built on the Request and Response of the Web platform, so the same code serves a Node
+process or a Cloudflare Worker. Point the front end at whichever with `VITE_API_URL` at build
+time. Served without one — as on the Pages deploy above — the portal says so rather than
+showing a sign-in form that cannot work.
+
+**Node, free to start** — [`render.yaml`](render.yaml) is a working blueprint. Be aware that a
+free instance has no persistent disk, so the SQLite file does not survive a restart. Fine for
+kicking the tyres; not a deployment.
+
+**Cloudflare Workers + D1, when it needs to be real** — [`wrangler.toml`](wrangler.toml):
+
+```bash
+npx wrangler d1 create hamscaler          # paste the id into wrangler.toml
+npx wrangler d1 migrations apply hamscaler --remote
+npx wrangler deploy
+```
+
+Nothing in `packages/api/src` changes between the two. Three seams make that true: the routes
+are Hono, the database is behind `Driver` (`db/index.ts` for Node, `db/d1.ts` for D1), and
+password hashing is Web Crypto rather than `node:crypto`. `index.ts` is the Node entry point and
+`worker.ts` the Workers one; both import the same app.
+
+Workers' free plan allows 10ms of CPU per request, and hashing a password properly costs more
+than that on purpose — so Workers means the $5/mo paid plan. Lowering the iteration count to fit
+the free tier would be trading every stored password's security for the hosting bill.
 
 **The pages and the API have to share a site.** The session cookie is `SameSite=Lax`, which is
 what makes it immune to cross-site request forgery without a token dance, and the price is that

@@ -1,5 +1,8 @@
-# Render Blueprint for the API. Committed so the deployment lives in git rather than only in a
-# dashboard, and so the constraints below are written down next to the thing they constrain.
+# Render Blueprint for the API — the free-to-start option. The Cloudflare Workers equivalent is
+# wrangler.toml, and the same code serves both: see the README.
+#
+# Committed so the deployment lives in git rather than only in a dashboard, and so the
+# constraints below are written down next to the thing they constrain.
 #
 # WHERE THE FRONT END GOES. The session cookie is SameSite=Lax on purpose (see
 # packages/api/src/cookies.ts): it makes the session immune to cross-site request forgery

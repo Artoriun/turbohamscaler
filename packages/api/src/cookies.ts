@@ -7,15 +7,28 @@
  * tokens — a trade worth making deliberately, not by accident.
  */
 
-import type { Response } from 'express';
+import type { Context } from 'hono';
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { SESSION_COOKIE } from './auth.ts';
 
-const isProd = () => process.env.NODE_ENV === 'production';
+/**
+ * Whether to mark the cookie Secure.
+ *
+ * `globalThis.process?.env` rather than `process.env`: a Workers-style runtime has no process
+ * global, and reading it unguarded throws at the first request rather than at start-up, which
+ * is the worst time to find out. Anywhere without one is https by definition, so Secure is the
+ * right default there.
+ */
+const isProd = () => globalThis.process?.env?.NODE_ENV !== 'development';
 
-export function setSessionCookie(res: Response, id: string, expiresAt: number): void {
-  res.cookie(SESSION_COOKIE, id, {
+export function readSessionCookie(c: Context): string | undefined {
+  return getCookie(c, SESSION_COOKIE);
+}
+
+export function setSessionCookie(c: Context, id: string, expiresAt: number): void {
+  setCookie(c, SESSION_COOKIE, id, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'Lax',
     // Secure would make the cookie invisible over plain http, which is how everyone runs the
     // dev server. Production is https, and there it is required.
     secure: isProd(),
@@ -24,6 +37,6 @@ export function setSessionCookie(res: Response, id: string, expiresAt: number): 
   });
 }
 
-export function clearSessionCookie(res: Response): void {
-  res.clearCookie(SESSION_COOKIE, { httpOnly: true, sameSite: 'lax', secure: isProd(), path: '/' });
+export function clearSessionCookie(c: Context): void {
+  deleteCookie(c, SESSION_COOKIE, { httpOnly: true, sameSite: 'Lax', secure: isProd(), path: '/' });
 }
