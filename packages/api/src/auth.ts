@@ -8,40 +8,18 @@
  * Sessions are opaque random ids in a database row, not JWTs. A JWT cannot be revoked without
  * building the very lookup table a session id already is; the trade is one indexed read per
  * request, which SQLite does in microseconds.
+ *
+ * Password hashing is re-exported from password.ts rather than written here, so this file has
+ * no runtime-specific imports left and the API can be served by Node or by a Workers-style
+ * runtime without a second copy of it.
  */
 
-import { randomBytes, randomUUID, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
-import { promisify } from 'node:util';
+import { randomUUID } from 'node:crypto';
 import { SESSION_RENEW_UNDER_SECONDS, SESSION_TTL_SECONDS } from '@hamscaler/shared';
 import { one, run } from './db/index.ts';
 
-const scrypt = promisify(scryptCb) as (
-  password: string,
-  salt: string,
-  keylen: number,
-) => Promise<Buffer>;
-
-// scrypt from node:crypto rather than argon2: no native dependency, and the parameters below
-// are the expensive part either way. N=2^15 is roughly 100ms on a laptop — slow enough to make
-// offline guessing costly, fast enough that a sign-in does not feel stalled.
-const KEYLEN = 64;
-const SALT_BYTES = 16;
-
-export async function hashPassword(password: string): Promise<string> {
-  const salt = randomBytes(SALT_BYTES).toString('hex');
-  const derived = await scrypt(password, salt, KEYLEN);
-  return `scrypt:${salt}:${derived.toString('hex')}`;
-}
-
-export async function verifyPassword(password: string, stored: string): Promise<boolean> {
-  const [scheme, salt, expected] = stored.split(':');
-  if (scheme !== 'scrypt' || !salt || !expected) return false;
-  const derived = await scrypt(password, salt, KEYLEN);
-  const expectedBuf = Buffer.from(expected, 'hex');
-  // Length check first: timingSafeEqual throws on a mismatch rather than returning false.
-  if (expectedBuf.length !== derived.length) return false;
-  return timingSafeEqual(derived, expectedBuf);
-}
+// Hashing lives in password.ts, written against Web Crypto so the API is not pinned to Node.
+export { hashPassword, verifyPassword } from './password.ts';
 
 // ── sessions ─────────────────────────────────────────────────────────────────────────────
 
