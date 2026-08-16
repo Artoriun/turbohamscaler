@@ -1,0 +1,44 @@
+# Render Blueprint for the API. Committed so the deployment lives in git rather than only in a
+# dashboard, and so the constraints below are written down next to the thing they constrain.
+#
+# WHERE THE FRONT END GOES. The session cookie is SameSite=Lax on purpose (see
+# packages/api/src/cookies.ts): it makes the session immune to cross-site request forgery
+# without a token dance, and the price is that the browser will not send it on a cross-*site*
+# request. So the pages and this API must share a registrable domain — app.example.com and
+# api.example.com are fine, and so is one origin serving both. The GitHub Pages deploy is not:
+# artoriun.github.io and onrender.com are different sites, which is exactly why that deploy
+# shows the "no API behind this copy" screen rather than a sign-in form that cannot work.
+# Splitting them across sites means SameSite=None, Secure *and* CSRF tokens — a deliberate
+# trade, not something to back into by setting VITE_API_URL and hoping.
+#
+# STORAGE. `node:sqlite` writes to a file, and a free instance has no persistent disk: the
+# database is gone on every restart, and Render restarts free instances often. That is fine for
+# a demo and wrong for anything real. Attach a disk (a paid plan) or point DATABASE_URL at a
+# hosted database and replace packages/api/src/db/index.ts — nothing above the query helpers
+# imports a driver.
+#
+# NODE VERSION. packages/shared ships raw TypeScript, so the runtime has to strip types on
+# load. Node 22 does; Node 20 dies on `Unexpected token 'export'` pointing at a file that looks
+# fine. .nvmrc says 22 for the same reason.
+services:
+  - type: web
+    name: turbohamscaler-api
+    runtime: node
+    plan: free
+    region: frankfurt
+    rootDir: .
+    buildCommand: npm install && npm run build --workspace=@hamscaler/api
+    startCommand: node packages/api/dist/index.js
+    # /health answers without touching the database, so a failing check means the process is
+    # down rather than the schema being mid-migration.
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      # Render injects PORT and expects the process to bind it; index.ts reads it first.
+      - key: NODE_ENV
+        value: production
+      # Ephemeral on the free plan — see the note above before trusting it with anything.
+      - key: DATABASE_URL
+        value: /tmp/hamscaler.db
