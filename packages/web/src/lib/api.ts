@@ -78,6 +78,16 @@ export const apiCreateProject = (orgId: string, name: string) =>
     body: JSON.stringify({ name }),
   });
 
+export const apiUpdateProject = (
+  orgId: string,
+  id: string,
+  patch: { name?: string; notes?: string },
+) =>
+  call<{ project: Project }>(`/api/orgs/${orgId}/projects/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(patch),
+  });
+
 export const apiDeleteProject = (orgId: string, id: string) =>
   call<{ ok: true }>(`/api/orgs/${orgId}/projects/${id}`, { method: 'DELETE' });
 

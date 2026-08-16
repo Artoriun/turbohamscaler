@@ -81,7 +81,9 @@ npm run db:reset       # delete the local database and reseed
   organisation with no owner is one nobody can administer their way out of
 - **Invitations** — an admin issues a single-use token addressed to a person, who accepts it
   themselves. Only the token's hash is stored, and nothing is ever checked against the account
-  list, so inviting cannot be used to ask which addresses are registered
+  list, so inviting cannot be used to ask which addresses are registered. There is no mail
+  provider: `packages/api/src/mailer.ts` is the seam, and until one is installed the token is
+  returned to the admin to pass on by hand — install one and the API stops returning it
 - **Tenant isolation** enforced in one file and proven by a suite written from the attacker's
   side — a valid session asking for another organisation's rows by id
 - **Migrations** applied in order and hashed, so editing one that has already run is an error

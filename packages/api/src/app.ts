@@ -26,6 +26,7 @@ import {
   verifyPassword,
 } from './auth.ts';
 import { clearSessionCookie, readSessionCookie, setSessionCookie } from './cookies.ts';
+import { getMailer } from './mailer.ts';
 import {
   type AppContext,
   type AuthVariables,
@@ -95,6 +96,16 @@ const openInvitation = async (token: string | undefined) => {
   if (invitation.expiresAt < Date.now()) return null;
   return invitation;
 };
+
+/**
+ * Where this deployment's front end lives, for links inside emails.
+ *
+ * Taken from APP_URL when set, and otherwise from the request that is asking — which is right
+ * for the common case of one origin serving both halves, and wrong the moment they are split.
+ * `globalThis.process?.env` because a Workers runtime has no process global.
+ */
+const appUrl = (c: AppContext) =>
+  (globalThis.process?.env?.APP_URL ?? new URL(c.req.url).origin).replace(/\/$/, '');
 
 const slugify = (s: string) =>
   s
@@ -427,10 +438,21 @@ export function createApp(): Hono<AuthVariables> {
         hashToken(token),
         INVITE_TTL_SECONDS,
       );
-      // The only time the token leaves the server. There is no mail sender in this starter, so
-      // the caller is responsible for delivering it; wire one in here and stop returning it.
       await recordAudit(orgId, 'invitation.created', await actorOf(c), email, role as string);
-      return c.json({ invitation, token }, 201);
+
+      const mailer = getMailer();
+      const org = await organisationById(orgId);
+      const link = `${appUrl(c)}/app?invite=${token}`;
+      await mailer.send({
+        to: email,
+        subject: `You have been invited to ${org?.name ?? 'an organisation'}`,
+        body: `You have been invited to join ${org?.name ?? 'an organisation'} as a ${role}.\n\n${link}\n\nThe invitation expires in seven days. If you were not expecting it, ignore this message.`,
+      });
+
+      // The token comes back only when nothing can deliver it. Returning a live credential in a
+      // response body puts it in the browser's memory and in any log between here and there, so
+      // it is done when it is the only way to pass the invitation on, and not otherwise.
+      return c.json(mailer.delivers ? { invitation } : { invitation, token }, 201);
     } catch {
       // The partial unique index rejects a second outstanding invitation for the same address.
       return c.json({ error: 'already-invited' }, 409);

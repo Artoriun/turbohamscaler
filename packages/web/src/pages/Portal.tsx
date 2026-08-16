@@ -38,6 +38,7 @@ import {
   apiSignIn,
   apiSignOut,
   apiSignUp,
+  apiUpdateProject,
   SIGNED_OUT_EVENT,
 } from '../lib/api';
 
@@ -594,6 +595,117 @@ function Account({ onChanged }: { onChanged: () => void }) {
   );
 }
 
+/**
+ * One project, readable until you choose to edit it.
+ *
+ * `notes` and the PATCH route behind it existed from the first commit and were reachable from
+ * nothing — the field could be written through the API and never read back. A tenant-owned
+ * entity you cannot edit is a poor advertisement for the thing this starter is built around.
+ */
+function ProjectRow({
+  orgId,
+  project,
+  canDelete,
+  onChanged,
+}: {
+  orgId: string;
+  project: Project;
+  canDelete: boolean;
+  onChanged: () => Promise<void> | void;
+}) {
+  const t = useT();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(project.name);
+  const [notes, setNotes] = useState(project.notes);
+  const [busy, setBusy] = useState(false);
+
+  if (!editing) {
+    return (
+      <li>
+        <div className="grow">
+          <span className="title">{project.name}</span>
+          {project.notes ? <span className="meta">{project.notes}</span> : null}
+          <span className="meta">{new Date(project.createdAt).toLocaleDateString()}</span>
+        </div>
+        <button
+          type="button"
+          className="ghost"
+          onClick={() => {
+            // Reset from the project rather than keeping whatever was typed and abandoned last
+            // time, which would silently re-apply it on the next save.
+            setName(project.name);
+            setNotes(project.notes);
+            setEditing(true);
+          }}
+          aria-label={fill(t.portal.projectNameFor, { name: project.name })}
+        >
+          {t.portal.projectEdit}
+        </button>
+        {canDelete ? (
+          <button
+            type="button"
+            className="danger"
+            onClick={async () => {
+              await apiDeleteProject(orgId, project.id);
+              await onChanged();
+            }}
+            aria-label={fill(t.portal.deleteNamed, { name: project.name })}
+          >
+            {t.portal.delete}
+          </button>
+        ) : null}
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <form
+        className="grow project-edit"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (busy) return;
+          setBusy(true);
+          try {
+            await apiUpdateProject(orgId, project.id, { name: name.trim(), notes });
+            setEditing(false);
+            await onChanged();
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <label>
+          <span className="sr-only">{fill(t.portal.projectNameFor, { name: project.name })}</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            aria-label={fill(t.portal.projectNameFor, { name: project.name })}
+            required
+          />
+        </label>
+        <label>
+          <span className="sr-only">{fill(t.portal.projectNotesFor, { name: project.name })}</span>
+          <input
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder={t.portal.projectNotes}
+            aria-label={fill(t.portal.projectNotesFor, { name: project.name })}
+          />
+        </label>
+        <div className="row">
+          <button type="submit" disabled={busy}>
+            {t.portal.projectSave}
+          </button>
+          <button type="button" className="ghost" onClick={() => setEditing(false)}>
+            {t.portal.projectCancel}
+          </button>
+        </div>
+      </form>
+    </li>
+  );
+}
+
 function RoleBadge({ role }: { role: Role }) {
   return <span className={`badge badge-${role}`}>{role}</span>;
 }
@@ -739,25 +851,13 @@ function Projects({ orgId, canDelete }: { orgId: string; canDelete: boolean }) {
       ) : (
         <ul className="list">
           {projects.map((p) => (
-            <li key={p.id}>
-              <div className="grow">
-                <span className="title">{p.name}</span>
-                <span className="meta">{new Date(p.createdAt).toLocaleDateString()}</span>
-              </div>
-              {canDelete ? (
-                <button
-                  type="button"
-                  className="danger"
-                  onClick={async () => {
-                    await apiDeleteProject(orgId, p.id);
-                    await refresh();
-                  }}
-                  aria-label={fill(t.portal.deleteNamed, { name: p.name })}
-                >
-                  {t.portal.delete}
-                </button>
-              ) : null}
-            </li>
+            <ProjectRow
+              key={p.id}
+              orgId={orgId}
+              project={p}
+              canDelete={canDelete}
+              onChanged={refresh}
+            />
           ))}
         </ul>
       )}

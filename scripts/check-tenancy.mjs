@@ -28,7 +28,14 @@ const TENANT_TABLES = ['projects', 'invitations', 'audit_events'];
  */
 const EXEMPT = /tenancy-exempt:\s*\S/;
 /** Files allowed to contain SQL at all. */
-const SQL_ALLOWED = ['repo.ts', 'auth.ts', 'signInAttempts.ts', 'db/index.ts', 'db/migrate.ts'];
+const SQL_ALLOWED = [
+  'repo.ts',
+  'auth.ts',
+  'signInAttempts.ts',
+  'writeLimit.ts',
+  'db/index.ts',
+  'db/migrate.ts',
+];
 
 const problems = [];
 let statementsChecked = 0;

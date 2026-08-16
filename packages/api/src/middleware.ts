@@ -15,6 +15,7 @@ import type { Context, MiddlewareHandler } from 'hono';
 import { readSession, renewSession, SESSION_COOKIE } from './auth.ts';
 import { readSessionCookie, setSessionCookie } from './cookies.ts';
 import { roleIn } from './repo.ts';
+import { recordWrite } from './writeLimit.ts';
 
 /**
  * What the checks below hang on the request for the handlers to read.
@@ -34,6 +35,9 @@ export interface AuthVariables {
 
 export type AppContext = Context<AuthVariables>;
 
+/** Methods that only read. Everything else counts against the session's write allowance. */
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
 /** A single route parameter, or undefined when it is absent or empty. */
 export function param(c: AppContext, name: string): string | undefined {
   const value = c.req.param(name);
@@ -51,6 +55,16 @@ export const requireUser: MiddlewareHandler<AuthVariables> = async (c, next) => 
   // still expires on time.
   const renewed = await renewSession(session);
   if (renewed) setSessionCookie(c, session.id, renewed);
+
+  // Throttle writes, not reads. A read is cheap and a page can legitimately make several at
+  // once; a write is what fills a small database up. Checked here rather than per route so a
+  // route added later is covered without anyone remembering to cover it.
+  if (!SAFE_METHODS.has(c.req.method)) {
+    const allowance = await recordWrite(session.id);
+    if (!allowance.allowed) {
+      return c.json({ error: 'too-many-writes', retryAfterMs: allowance.retryAfterMs }, 429);
+    }
+  }
 
   c.set('userId', session.user_id);
   await next();
