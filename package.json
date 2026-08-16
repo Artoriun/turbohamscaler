@@ -31,8 +31,10 @@
     "test:api:worker": "node scripts/test-worker.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@biomejs/biome": "^2.3.14",
     "@playwright/test": "^1.58.1",
+    "axe-core": "^4.13.0",
     "lighthouse": "^12.8.2",
     "tsx": "^4.20.7",
     "turbo": "^2.6.2",

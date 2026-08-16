@@ -136,6 +136,13 @@ Running the API suite twice is the point: the same assertions pass on Node and o
 "it runs on both" is checked rather than asserted. It is all local — wrangler runs on Miniflare
 — so it needs no Cloudflare account.
 
+Accessibility is checked twice, because one check cannot reach everything. Lighthouse audits
+the public page and `/app`, but it cannot sign in — so `e2e/a11y.spec.ts` sweeps the signed-in
+portal with axe, in both themes, with a project, an invitation and an audit log on screen, and
+again with a project open for editing. It gates serious and critical findings only; the rest
+are advisory and a gate on them is noise. Neither check makes the app accessible — axe finds a
+subset of problems, and a green sweep is a floor rather than a verdict.
+
 Lighthouse gates accessibility, SEO, best-practices and CLS — all properties of the code. It
 measures performance and prints it without gating: a shared runner's timings drift more than
 the thing being measured, and the bundle budget is the half of performance that is
