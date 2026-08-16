@@ -17,7 +17,7 @@
  * since nothing is serving the API during a build — and that would then be the markup even for
  * someone who deploys it with an API behind it.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -87,6 +87,38 @@ try {
   server.close();
 }
 
+/**
+ * A sitemap, from the same list of routes that was just rendered.
+ *
+ * Generated rather than hand-written for the obvious reason: a hand-written one is a second
+ * list of routes to keep in step, and the copy that drifts is always the one nobody looks at.
+ *
+ * SITE_URL is the origin the pages will be served from — the scheme and host only, with no
+ * path. The path comes from the build's own base, so setting SITE_URL to something that
+ * already includes it produces every URL twice over. Left unset it falls back to this
+ * repository's Pages host, which is right here and wrong for a fork: a sitemap pointing at
+ * someone else's domain is worse than no sitemap, so it is the one thing worth setting.
+ */
+const SITE = (process.env.SITE_URL ?? 'https://artoriun.github.io').replace(/\/$/, '');
+const urls = PUBLIC_ROUTES.map((route) => `${SITE}${BASE}${route}`.replace(/\/$/, '') || SITE);
+writeFileSync(
+  join(DIST, 'sitemap.xml'),
+  `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
+    urls.map((url) => `  <url><loc>${url}</loc></url>\n`).join('') +
+    `</urlset>\n`,
+);
+
+// Pointing at it from robots.txt is what makes a crawler look without being told twice.
+const robots = join(DIST, 'robots.txt');
+if (existsSync(robots)) {
+  const text = readFileSync(robots, 'utf8')
+    .replace(/\s*Sitemap:.*$/m, '')
+    .trimEnd();
+  writeFileSync(robots, `${text}\n\nSitemap: ${SITE}${BASE}sitemap.xml\n`);
+}
+
+console.log(`  sitemap.xml with ${urls.length} url(s), and robots.txt pointing at it`);
 console.log(
   `✓ prerendered ${PUBLIC_ROUTES.length} route(s); ${SHELL_ROUTES.length} left as the shell`,
 );

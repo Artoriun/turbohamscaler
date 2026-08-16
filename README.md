@@ -87,7 +87,8 @@ npm run db:reset       # delete the local database and reseed
 - **Seeded demo data**, two organisations, no cloud account
 - **Light, dark or follow the system**, chosen before first paint so the theme never flashes
 - **Prerendered public pages** — each route is a real file with its text already in the HTML,
-  so a crawler that runs no JavaScript still sees the page and every URL answers 200
+  so a crawler that runs no JavaScript still sees the page and every URL answers 200, with a
+  generated `sitemap.xml` and a `robots.txt` pointing at it
 
 ---
 
@@ -159,6 +160,10 @@ usually has no persistent disk, so the database is gone on every restart. Fine f
 wrong for anything real: attach a disk, or point `DATABASE_URL` at a hosted database and
 replace `packages/api/src/db/index.ts`, which nothing above the query helpers imports a driver
 through.
+
+Set `SITE_URL` to the origin the pages are served from — scheme and host only, no path. It is
+what the sitemap is built from, and left unset it points at this repository's Pages host, which
+is wrong for a fork.
 
 **Node 22** is required (`.nvmrc`).
 
