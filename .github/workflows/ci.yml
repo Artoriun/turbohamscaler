@@ -115,8 +115,18 @@ jobs:
 
       # A single-page app on a static host needs the 404 to be the app itself, or a deep link
       # like /turbohamscaler/app returns the host's own 404 and never boots the router.
-      - name: SPA fallback
-        run: cp packages/web/dist/index.html packages/web/dist/404.html
+      #
+      # The known routes additionally get a real file each. Without them every route but the
+      # root answers with a 404 *status* while rendering correctly — invisible to a person,
+      # but it is what a crawler records, so the Japanese pages would never be indexed.
+      - name: SPA fallback and route files
+        run: |
+          cd packages/web/dist
+          cp index.html 404.html
+          for route in ja app ja/app; do
+            mkdir -p "$route"
+            cp index.html "$route/index.html"
+          done
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
