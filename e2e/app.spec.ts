@@ -135,7 +135,9 @@ test('served without an API, the portal says so instead of offering a broken for
     }),
   );
   await page.goto('/app');
-  await expect(page.getByRole('heading', { name: 'No API behind this copy' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'This wheel is not connected to anything' }),
+  ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Sign in' })).toHaveCount(0);
 });
 

@@ -31,7 +31,7 @@ export const en = {
     whatYouGet: 'What you get',
     startHeading: 'Start in three commands',
     startNote:
-      'Two organisations are seeded on purpose. Sign in as one and the other’s data is simply not there — which is the whole point.',
+      'Two organisations are seeded on purpose: TurboHam runs a wheelwright’s, Teemo is in bedding. Sign in as one and the other’s data is simply not there — no filter to remember, no flag to forget.',
     footer:
       'TurboHamscaler — a TurboRepo starter for multi-tenant apps. Every service it needs has a free tier, so the running cost is a hamster-appropriate zero.',
     features: {
@@ -52,11 +52,11 @@ export const en = {
         body: 'Applied in order and hashed, so editing one that has already run is an error rather than a database that quietly differs from everyone else’s.',
       },
       nothing: {
-        title: 'Runs on nothing',
-        body: 'No account, no container, no native build. Install, seed, and you have a working app with two organisations to poke at.',
+        title: 'Runs on a diet of nothing',
+        body: 'No account, no container, no native build. Install, seed, and you have a working app with two organisations to poke at. Cheaper to run than the hamster.',
       },
       pipeline: {
-        title: 'A pipeline that fails loudly',
+        title: 'A pipeline that squeaks when it should',
         body: 'Lint, types, tenancy guards, unit and API tests, a bundle budget, and the browser suite run twice — against the dev server and the built output.',
       },
     },
@@ -185,10 +185,10 @@ export const en = {
     inviteTaken: 'That address already has an invitation to this organisation.',
     inviteBadAddress: 'Enter an email address and a role.',
     rolesNote: 'Roles decide what each person may do. Only an admin or owner can remove a project.',
-    noApiTitle: 'No API behind this copy',
+    noApiTitle: 'This wheel is not connected to anything',
     noApiBody:
-      'The public pages are static, so they deploy anywhere. The app needs a server for accounts and per-tenant data, and this deploy has none.',
-    noApiRun: 'Run it locally and everything below works:',
+      'The public pages are static, so they deploy anywhere. The app itself needs a server for accounts and per-tenant data, and this copy has none — TurboHam is running, but the wheel is not attached to the machinery.',
+    noApiRun: 'Three commands and it all works, hamsters included:',
     backToOverview: 'Back to the overview',
   },
 
