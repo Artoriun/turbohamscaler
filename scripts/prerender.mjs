@@ -99,7 +99,20 @@ try {
  * repository's Pages host, which is right here and wrong for a fork: a sitemap pointing at
  * someone else's domain is worse than no sitemap, so it is the one thing worth setting.
  */
-const SITE = (process.env.SITE_URL ?? 'https://artoriun.github.io').replace(/\/$/, '');
+// The host is lowercased. GitHub hands the owner's name back with its display capitalisation,
+// and a sitemap is a list of canonical URLs — "Artoriun.github.io" resolves the same but is not
+// the address the pages are served from, which is the sort of near-miss a crawler is entitled
+// to treat as a different location.
+const SITE = (() => {
+  const raw = (process.env.SITE_URL ?? 'https://artoriun.github.io').replace(/\/$/, '');
+  try {
+    const url = new URL(raw);
+    url.hostname = url.hostname.toLowerCase();
+    return url.origin;
+  } catch {
+    return raw.toLowerCase();
+  }
+})();
 const urls = PUBLIC_ROUTES.map((route) => `${SITE}${BASE}${route}`.replace(/\/$/, '') || SITE);
 writeFileSync(
   join(DIST, 'sitemap.xml'),
