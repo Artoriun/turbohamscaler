@@ -23,10 +23,10 @@ interface Row {
   last_at: number;
 }
 
-export function recordAttempt(email: string): AttemptState {
+export async function recordAttempt(email: string): Promise<AttemptState> {
   const key = email.toLowerCase();
   const now = Date.now();
-  const row = one<Row>(
+  const row = await one<Row>(
     'SELECT failures, first_at, last_at FROM sign_in_attempts WHERE email_key = ?',
     key,
   );
@@ -34,7 +34,7 @@ export function recordAttempt(email: string): AttemptState {
   // The window is measured from the first failure in the run, so a steady trickle of attempts
   // cannot keep the window open forever by refreshing it with each try.
   if (!row || now - row.first_at > LIMITS.signInWindowMs) {
-    run(
+    await run(
       `INSERT INTO sign_in_attempts (email_key, failures, first_at, last_at) VALUES (?, 1, ?, ?)
        ON CONFLICT(email_key) DO UPDATE SET failures = 1, first_at = ?, last_at = ?`,
       key,
@@ -47,7 +47,7 @@ export function recordAttempt(email: string): AttemptState {
   }
 
   const failures = row.failures + 1;
-  run(
+  await run(
     'UPDATE sign_in_attempts SET failures = ?, last_at = ? WHERE email_key = ?',
     failures,
     now,
@@ -62,6 +62,6 @@ export function recordAttempt(email: string): AttemptState {
 }
 
 /** Called on a successful sign-in, so one mistyped password costs nothing an hour later. */
-export function clearAttempts(email: string): void {
-  run('DELETE FROM sign_in_attempts WHERE email_key = ?', email.toLowerCase());
+export async function clearAttempts(email: string): Promise<void> {
+  await run('DELETE FROM sign_in_attempts WHERE email_key = ?', email.toLowerCase());
 }

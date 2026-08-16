@@ -30,20 +30,20 @@ export interface AuthedRequest extends Request {
   role?: Role;
 }
 
-export function requireUser(req: Request, res: Response, next: NextFunction): void {
+export async function requireUser(req: Request, res: Response, next: NextFunction): Promise<void> {
   const id = req.cookies?.[SESSION_COOKIE];
   if (!id) {
     res.status(401).json({ error: 'not-signed-in' });
     return;
   }
-  const session = readSession(id);
+  const session = await readSession(id);
   if (!session) {
     res.status(401).json({ error: 'not-signed-in' });
     return;
   }
   // Renewed here rather than on a schedule, so an active session never lapses and an idle one
   // still expires on time.
-  const renewed = renewSession(session);
+  const renewed = await renewSession(session);
   if (renewed) setSessionCookie(res, session.id, renewed);
   (req as AuthedRequest).userId = session.user_id;
   next();
@@ -56,14 +56,14 @@ export function requireUser(req: Request, res: Response, next: NextFunction): vo
  * oracle for anyone willing to enumerate ids.
  */
 export function requireOrg(required: Role = 'member') {
-  return (req: Request, res: Response, next: NextFunction): void => {
+  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     const authed = req as AuthedRequest;
     const orgId = param(req, 'orgId');
     if (!authed.userId || !orgId) {
       res.status(401).json({ error: 'not-signed-in' });
       return;
     }
-    const role = roleIn(orgId, authed.userId);
+    const role = await roleIn(orgId, authed.userId);
     if (!role) {
       res.status(404).json({ error: 'not-found' });
       return;

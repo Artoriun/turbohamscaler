@@ -27,18 +27,22 @@ const PEOPLE = [
 
 export async function seed(log: (msg: string) => void = console.log): Promise<void> {
   migrate(() => {});
-  if (findUserByEmail(PEOPLE[0].email)) {
+  if (await findUserByEmail(PEOPLE[0].email)) {
     log('✓ demo data already present');
     return;
   }
 
   const password = await hashPassword(DEMO_PASSWORD);
   for (const person of PEOPLE) {
-    const user = createUser(person.email, person.name, password);
-    const org = createOrganisation(person.org, person.slug);
-    addMember(org.id, user.id, 'owner');
-    createProject(org.id, `${person.name}'s first project`, 'Seeded so the list is not empty.');
-    createProject(org.id, 'Second project', '');
+    const user = await createUser(person.email, person.name, password);
+    const org = await createOrganisation(person.org, person.slug);
+    await addMember(org.id, user.id, 'owner');
+    await createProject(
+      org.id,
+      `${person.name}'s first project`,
+      'Seeded so the list is not empty.',
+    );
+    await createProject(org.id, 'Second project', '');
   }
 
   log(`✓ seeded ${PEOPLE.length} organisations`);

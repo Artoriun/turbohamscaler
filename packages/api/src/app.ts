@@ -62,9 +62,9 @@ import { clearAttempts, recordAttempt } from './signInAttempts.ts';
  * The label is stored alongside the id because an id stops meaning anything once the account is
  * gone, and the record has to outlive its subject to be worth keeping.
  */
-const actorOf = (req: express.Request) => {
+const actorOf = async (req: express.Request) => {
   const id = (req as AuthedRequest).userId as string;
-  const user = findUserById(id);
+  const user = await findUserById(id);
   return { id, label: user ? `${user.name} <${user.email}>` : id };
 };
 
@@ -76,9 +76,9 @@ const hashToken = (token: string) => createHash('sha256').update(token).digest('
  * One place decides that, so "expired" cannot be handled in the preview and forgotten in the
  * accept — which is the shape this kind of bug takes.
  */
-const openInvitation = (token: string | undefined) => {
+const openInvitation = async (token: string | undefined) => {
   if (!token) return null;
-  const invitation = findInvitationByTokenHash(hashToken(token));
+  const invitation = await findInvitationByTokenHash(hashToken(token));
   if (!invitation) return null;
   if (invitation.acceptedAt !== null) return null;
   if (invitation.expiresAt < Date.now()) return null;
@@ -97,7 +97,7 @@ export function createApp(): Express {
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
 
-  app.get('/health', (_req, res) => {
+  app.get('/health', async (_req, res) => {
     res.json({ ok: true });
   });
 
@@ -113,26 +113,26 @@ export function createApp(): Express {
       res.status(400).json({ error: 'weak-password', minLength: MIN_PASSWORD_LENGTH });
       return;
     }
-    if (findUserByEmail(email)) {
+    if (await findUserByEmail(email)) {
       // Same shape as success would take a step longer, so this is an enumeration oracle
       // either way; saying so plainly is more useful than pretending otherwise.
       res.status(409).json({ error: 'email-taken' });
       return;
     }
-    const user = createUser(email, name, await hashPassword(password));
+    const user = await createUser(email, name, await hashPassword(password));
     // A user with no organisation has nowhere to go, so sign-up creates one and makes them its
     // owner. Every later join is by invitation.
     // Suffixed with randomness, not a timestamp. `Date.now() % 10000` repeats every ten
     // seconds, so two people signing up with the same name inside that window collided on
     // organisations.slug and the second one got a 500 instead of an account.
-    const org = createOrganisation(
+    const org = await createOrganisation(
       `${name}'s workspace`,
       `${slugify(name)}-${randomUUID().slice(0, 8)}`,
     );
-    addMember(org.id, user.id, 'owner');
-    const session = createSession(user.id);
+    await addMember(org.id, user.id, 'owner');
+    const session = await createSession(user.id);
     setSessionCookie(res, session.id, session.expiresAt);
-    res.status(201).json({ user, organisations: organisationsFor(user.id) });
+    res.status(201).json({ user, organisations: await organisationsFor(user.id) });
   });
 
   app.post('/api/auth/sign-in', async (req, res) => {
@@ -141,12 +141,12 @@ export function createApp(): Express {
       res.status(400).json({ error: 'invalid-details' });
       return;
     }
-    const attempt = recordAttempt(email);
+    const attempt = await recordAttempt(email);
     if (attempt.lockedOut) {
       res.status(429).json({ error: 'too-many-attempts', retryAfterMs: attempt.retryAfterMs });
       return;
     }
-    const user = findUserByEmail(email);
+    const user = await findUserByEmail(email);
     // Verified even when the user is unknown, against a throwaway hash, so a wrong address and
     // a wrong password take the same time. Skipping it turns response latency into a list of
     // which addresses have accounts.
@@ -156,13 +156,13 @@ export function createApp(): Express {
       res.status(401).json({ error: 'invalid-credentials' });
       return;
     }
-    clearAttempts(email);
-    const session = createSession(user.id);
+    await clearAttempts(email);
+    const session = await createSession(user.id);
     setSessionCookie(res, session.id, session.expiresAt);
-    res.json({ user, organisations: organisationsFor(user.id) });
+    res.json({ user, organisations: await organisationsFor(user.id) });
   });
 
-  app.post('/api/auth/sign-out', requireUser, (req, res) => {
+  app.post('/api/auth/sign-out', requireUser, async (req, res) => {
     const id = req.cookies?.[SESSION_COOKIE];
     if (id) destroySession(id);
     clearSessionCookie(res);
@@ -170,26 +170,26 @@ export function createApp(): Express {
   });
 
   /** Ends every session for this user, on every device. */
-  app.post('/api/auth/sign-out-everywhere', requireUser, (req, res) => {
+  app.post('/api/auth/sign-out-everywhere', requireUser, async (req, res) => {
     const count = destroyAllSessions((req as AuthedRequest).userId as string);
     clearSessionCookie(res);
     res.json({ ok: true, sessions: count });
   });
 
-  app.get('/api/me', requireUser, (req, res) => {
+  app.get('/api/me', requireUser, async (req, res) => {
     const userId = (req as AuthedRequest).userId as string;
-    const user = findUserById(userId);
+    const user = await findUserById(userId);
     if (!user) {
       res.status(401).json({ error: 'not-signed-in' });
       return;
     }
-    res.json({ user, organisations: organisationsFor(userId) });
+    res.json({ user, organisations: await organisationsFor(userId) });
   });
 
   // ── organisation members ───────────────────────────────────────────────────────────────
 
-  app.get('/api/orgs/:orgId/members', requireUser, requireOrg('member'), (req, res) => {
-    res.json({ members: membersOf((req as AuthedRequest).orgId as string) });
+  app.get('/api/orgs/:orgId/members', requireUser, requireOrg('member'), async (req, res) => {
+    res.json({ members: await membersOf((req as AuthedRequest).orgId as string) });
   });
 
   /**
@@ -199,66 +199,81 @@ export function createApp(): Express {
    * change the role of someone ranked above you, and only an owner can make another owner.
    * Without the first, an admin could demote the owner who appointed them.
    */
-  app.patch('/api/orgs/:orgId/members/:userId', requireUser, requireOrg('admin'), (req, res) => {
-    const orgId = (req as AuthedRequest).orgId as string;
-    const actorRole = (req as AuthedRequest).role as Role;
-    const targetId = param(req, 'userId');
-    const { role } = req.body ?? {};
+  app.patch(
+    '/api/orgs/:orgId/members/:userId',
+    requireUser,
+    requireOrg('admin'),
+    async (req, res) => {
+      const orgId = (req as AuthedRequest).orgId as string;
+      const actorRole = (req as AuthedRequest).role as Role;
+      const targetId = param(req, 'userId');
+      const { role } = req.body ?? {};
 
-    if (!targetId || !ROLES.includes(role)) {
-      res.status(400).json({ error: 'invalid-details' });
-      return;
-    }
-    const targetRole = roleIn(orgId, targetId);
-    if (!targetRole) {
-      res.status(404).json({ error: 'not-found' });
-      return;
-    }
-    if (!hasRole(actorRole, targetRole) || (role === 'owner' && actorRole !== 'owner')) {
-      res.status(403).json({ error: 'insufficient-role' });
-      return;
-    }
-    // Demoting the last owner leaves an organisation nobody can administer.
-    if (targetRole === 'owner' && role !== 'owner' && ownerCount(orgId) === 1) {
-      res.status(409).json({ error: 'last-owner' });
-      return;
-    }
-    setMemberRole(orgId, targetId, role as Role);
-    recordAudit(
-      orgId,
-      'member.role-changed',
-      actorOf(req),
-      findUserById(targetId)?.email ?? targetId,
-      `${targetRole} → ${role}`,
-    );
-    res.json({ members: membersOf(orgId) });
-  });
+      if (!targetId || !ROLES.includes(role)) {
+        res.status(400).json({ error: 'invalid-details' });
+        return;
+      }
+      const targetRole = await roleIn(orgId, targetId);
+      if (!targetRole) {
+        res.status(404).json({ error: 'not-found' });
+        return;
+      }
+      if (!hasRole(actorRole, targetRole) || (role === 'owner' && actorRole !== 'owner')) {
+        res.status(403).json({ error: 'insufficient-role' });
+        return;
+      }
+      // Demoting the last owner leaves an organisation nobody can administer.
+      if (targetRole === 'owner' && role !== 'owner' && (await ownerCount(orgId)) === 1) {
+        res.status(409).json({ error: 'last-owner' });
+        return;
+      }
+      await setMemberRole(orgId, targetId, role as Role);
+      await recordAudit(
+        orgId,
+        'member.role-changed',
+        await actorOf(req),
+        (await findUserById(targetId))?.email ?? targetId,
+        `${targetRole} → ${role}`,
+      );
+      res.json({ members: await membersOf(orgId) });
+    },
+  );
 
-  app.delete('/api/orgs/:orgId/members/:userId', requireUser, requireOrg('admin'), (req, res) => {
-    const orgId = (req as AuthedRequest).orgId as string;
-    const actorRole = (req as AuthedRequest).role as Role;
-    const targetId = param(req, 'userId');
-    if (!targetId) {
-      res.status(400).json({ error: 'invalid-details' });
-      return;
-    }
-    const targetRole = roleIn(orgId, targetId);
-    if (!targetRole) {
-      res.status(404).json({ error: 'not-found' });
-      return;
-    }
-    if (!hasRole(actorRole, targetRole)) {
-      res.status(403).json({ error: 'insufficient-role' });
-      return;
-    }
-    if (targetRole === 'owner' && ownerCount(orgId) === 1) {
-      res.status(409).json({ error: 'last-owner' });
-      return;
-    }
-    removeMember(orgId, targetId);
-    recordAudit(orgId, 'member.removed', actorOf(req), findUserById(targetId)?.email ?? targetId);
-    res.json({ members: membersOf(orgId) });
-  });
+  app.delete(
+    '/api/orgs/:orgId/members/:userId',
+    requireUser,
+    requireOrg('admin'),
+    async (req, res) => {
+      const orgId = (req as AuthedRequest).orgId as string;
+      const actorRole = (req as AuthedRequest).role as Role;
+      const targetId = param(req, 'userId');
+      if (!targetId) {
+        res.status(400).json({ error: 'invalid-details' });
+        return;
+      }
+      const targetRole = await roleIn(orgId, targetId);
+      if (!targetRole) {
+        res.status(404).json({ error: 'not-found' });
+        return;
+      }
+      if (!hasRole(actorRole, targetRole)) {
+        res.status(403).json({ error: 'insufficient-role' });
+        return;
+      }
+      if (targetRole === 'owner' && (await ownerCount(orgId)) === 1) {
+        res.status(409).json({ error: 'last-owner' });
+        return;
+      }
+      await removeMember(orgId, targetId);
+      await recordAudit(
+        orgId,
+        'member.removed',
+        await actorOf(req),
+        (await findUserById(targetId))?.email ?? targetId,
+      );
+      res.json({ members: await membersOf(orgId) });
+    },
+  );
 
   /**
    * Leave an organisation.
@@ -267,18 +282,18 @@ export function createApp(): Express {
    * permissions: removing somebody else is an admin's job, and leaving is everyone's. Sharing a
    * route would mean the role gate could not sit in the middleware.
    */
-  app.post('/api/orgs/:orgId/leave', requireUser, requireOrg('member'), (req, res) => {
+  app.post('/api/orgs/:orgId/leave', requireUser, requireOrg('member'), async (req, res) => {
     const orgId = (req as AuthedRequest).orgId as string;
     const userId = (req as AuthedRequest).userId as string;
-    if ((req as AuthedRequest).role === 'owner' && ownerCount(orgId) === 1) {
+    if ((req as AuthedRequest).role === 'owner' && (await ownerCount(orgId)) === 1) {
       // Hand it over first. Leaving would strand every other member.
       res.status(409).json({ error: 'last-owner' });
       return;
     }
-    const who = actorOf(req);
-    removeMember(orgId, userId);
-    recordAudit(orgId, 'member.left', who, who.label);
-    res.json({ organisations: organisationsFor(userId) });
+    const who = await actorOf(req);
+    await removeMember(orgId, userId);
+    await recordAudit(orgId, 'member.left', who, who.label);
+    res.json({ organisations: await organisationsFor(userId) });
   });
 
   /**
@@ -287,8 +302,8 @@ export function createApp(): Express {
    * Admin-only: it names people and what was done to them, which is more than a member needs
    * and more than they should be handed by default.
    */
-  app.get('/api/orgs/:orgId/audit', requireUser, requireOrg('admin'), (req, res) => {
-    res.json({ events: listAudit((req as AuthedRequest).orgId as string) });
+  app.get('/api/orgs/:orgId/audit', requireUser, requireOrg('admin'), async (req, res) => {
+    res.json({ events: await listAudit((req as AuthedRequest).orgId as string) });
   });
 
   // ── invitations ───────────────────────────────────────────────────────────────────────
@@ -301,7 +316,7 @@ export function createApp(): Express {
   //
   // Nothing below ever looks in the users table, so there is no answer to leak.
 
-  app.post('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), (req, res) => {
+  app.post('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), async (req, res) => {
     const { email, role } = req.body ?? {};
     if (typeof email !== 'string' || !email.includes('@') || !['member', 'admin'].includes(role)) {
       res.status(400).json({ error: 'invalid-details' });
@@ -310,7 +325,7 @@ export function createApp(): Express {
     const orgId = (req as AuthedRequest).orgId as string;
     const token = randomBytes(32).toString('base64url');
     try {
-      const invitation = createInvitation(
+      const invitation = await createInvitation(
         orgId,
         email,
         role as Role,
@@ -320,7 +335,7 @@ export function createApp(): Express {
       );
       // The only time the token leaves the server. There is no mail sender in this starter, so
       // the caller is responsible for delivering it; wire one in here and stop returning it.
-      recordAudit(orgId, 'invitation.created', actorOf(req), email, role as string);
+      await recordAudit(orgId, 'invitation.created', await actorOf(req), email, role as string);
       res.status(201).json({ invitation, token });
     } catch {
       // The partial unique index rejects a second outstanding invitation for the same address.
@@ -328,21 +343,26 @@ export function createApp(): Express {
     }
   });
 
-  app.get('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), (req, res) => {
-    res.json({ invitations: listInvitations((req as AuthedRequest).orgId as string) });
+  app.get('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), async (req, res) => {
+    res.json({ invitations: await listInvitations((req as AuthedRequest).orgId as string) });
   });
 
-  app.delete('/api/orgs/:orgId/invitations/:id', requireUser, requireOrg('admin'), (req, res) => {
-    const id = param(req, 'id');
-    const orgId = (req as AuthedRequest).orgId as string;
-    const invitation = listInvitations(orgId).find((i) => i.id === id);
-    if (!id || !revokeInvitation(orgId, id)) {
-      res.status(404).json({ error: 'not-found' });
-      return;
-    }
-    recordAudit(orgId, 'invitation.revoked', actorOf(req), invitation?.email ?? id);
-    res.status(204).end();
-  });
+  app.delete(
+    '/api/orgs/:orgId/invitations/:id',
+    requireUser,
+    requireOrg('admin'),
+    async (req, res) => {
+      const id = param(req, 'id');
+      const orgId = (req as AuthedRequest).orgId as string;
+      const invitation = (await listInvitations(orgId)).find((i) => i.id === id);
+      if (!id || !(await revokeInvitation(orgId, id))) {
+        res.status(404).json({ error: 'not-found' });
+        return;
+      }
+      await recordAudit(orgId, 'invitation.revoked', await actorOf(req), invitation?.email ?? id);
+      res.status(204).end();
+    },
+  );
 
   /**
    * What an invitation is for, so the client can say "join X as an admin?" before acting.
@@ -350,65 +370,65 @@ export function createApp(): Express {
    * Behind a session deliberately: an anonymous endpoint here would let anyone guessing tokens
    * harvest organisation names. Holding a token is not the same as being allowed to read it.
    */
-  app.get('/api/invitations/:token', requireUser, (req, res) => {
-    const invitation = openInvitation(param(req, 'token'));
+  app.get('/api/invitations/:token', requireUser, async (req, res) => {
+    const invitation = await openInvitation(param(req, 'token'));
     if (!invitation) {
       res.status(404).json({ error: 'no-such-invitation' });
       return;
     }
-    const org = organisationById(invitation.orgId);
+    const org = await organisationById(invitation.orgId);
     res.json({ invitation, organisation: org });
   });
 
-  app.post('/api/invitations/:token/accept', requireUser, (req, res) => {
-    const invitation = openInvitation(param(req, 'token'));
+  app.post('/api/invitations/:token/accept', requireUser, async (req, res) => {
+    const invitation = await openInvitation(param(req, 'token'));
     if (!invitation) {
       res.status(404).json({ error: 'no-such-invitation' });
       return;
     }
     const userId = (req as AuthedRequest).userId as string;
-    const user = findUserById(userId);
+    const user = await findUserById(userId);
     // Addressed to a person, not to whoever ends up holding the link. Without this a forwarded
     // invitation is a way into someone else's organisation.
     if (!user || user.email.toLowerCase() !== invitation.email.toLowerCase()) {
       res.status(403).json({ error: 'wrong-account' });
       return;
     }
-    if (roleIn(invitation.orgId, userId)) {
-      markInvitationAccepted(invitation.orgId, invitation.id);
-      res.status(200).json({ organisations: organisationsFor(userId) });
+    if (await roleIn(invitation.orgId, userId)) {
+      await markInvitationAccepted(invitation.orgId, invitation.id);
+      res.status(200).json({ organisations: await organisationsFor(userId) });
       return;
     }
     // Single-use: the write only touches a row that has not been accepted, so two requests
     // racing produce one membership and one 404 rather than two memberships.
-    if (!markInvitationAccepted(invitation.orgId, invitation.id)) {
+    if (!(await markInvitationAccepted(invitation.orgId, invitation.id))) {
       res.status(404).json({ error: 'no-such-invitation' });
       return;
     }
-    addMember(invitation.orgId, userId, invitation.role);
-    recordAudit(
+    await addMember(invitation.orgId, userId, invitation.role);
+    await recordAudit(
       invitation.orgId,
       'invitation.accepted',
-      actorOf(req),
+      await actorOf(req),
       invitation.email,
       invitation.role,
     );
-    res.status(201).json({ organisations: organisationsFor(userId) });
+    res.status(201).json({ organisations: await organisationsFor(userId) });
   });
 
   // ── projects (tenant-owned) ────────────────────────────────────────────────────────────
 
-  app.get('/api/orgs/:orgId/projects', requireUser, requireOrg('member'), (req, res) => {
-    res.json({ projects: listProjects((req as AuthedRequest).orgId as string) });
+  app.get('/api/orgs/:orgId/projects', requireUser, requireOrg('member'), async (req, res) => {
+    res.json({ projects: await listProjects((req as AuthedRequest).orgId as string) });
   });
 
-  app.post('/api/orgs/:orgId/projects', requireUser, requireOrg('member'), (req, res) => {
+  app.post('/api/orgs/:orgId/projects', requireUser, requireOrg('member'), async (req, res) => {
     const { name, notes } = req.body ?? {};
     if (typeof name !== 'string' || !name.trim()) {
       res.status(400).json({ error: 'invalid-details' });
       return;
     }
-    const project = createProject(
+    const project = await createProject(
       (req as AuthedRequest).orgId as string,
       name.trim(),
       typeof notes === 'string' ? notes : '',
@@ -416,24 +436,10 @@ export function createApp(): Express {
     res.status(201).json({ project });
   });
 
-  app.get('/api/orgs/:orgId/projects/:id', requireUser, requireOrg('member'), (req, res) => {
-    const project = getProject((req as AuthedRequest).orgId as string, param(req, 'id') as string);
-    if (!project) {
-      res.status(404).json({ error: 'not-found' });
-      return;
-    }
-    res.json({ project });
-  });
-
-  app.patch('/api/orgs/:orgId/projects/:id', requireUser, requireOrg('member'), (req, res) => {
-    const { name, notes } = req.body ?? {};
-    const project = updateProject(
+  app.get('/api/orgs/:orgId/projects/:id', requireUser, requireOrg('member'), async (req, res) => {
+    const project = await getProject(
       (req as AuthedRequest).orgId as string,
       param(req, 'id') as string,
-      {
-        name: typeof name === 'string' ? name : undefined,
-        notes: typeof notes === 'string' ? notes : undefined,
-      },
     );
     if (!project) {
       res.status(404).json({ error: 'not-found' });
@@ -442,10 +448,40 @@ export function createApp(): Express {
     res.json({ project });
   });
 
-  app.delete('/api/orgs/:orgId/projects/:id', requireUser, requireOrg('admin'), (req, res) => {
-    const gone = deleteProject((req as AuthedRequest).orgId as string, param(req, 'id') as string);
-    res.status(gone ? 200 : 404).json(gone ? { ok: true } : { error: 'not-found' });
-  });
+  app.patch(
+    '/api/orgs/:orgId/projects/:id',
+    requireUser,
+    requireOrg('member'),
+    async (req, res) => {
+      const { name, notes } = req.body ?? {};
+      const project = await updateProject(
+        (req as AuthedRequest).orgId as string,
+        param(req, 'id') as string,
+        {
+          name: typeof name === 'string' ? name : undefined,
+          notes: typeof notes === 'string' ? notes : undefined,
+        },
+      );
+      if (!project) {
+        res.status(404).json({ error: 'not-found' });
+        return;
+      }
+      res.json({ project });
+    },
+  );
+
+  app.delete(
+    '/api/orgs/:orgId/projects/:id',
+    requireUser,
+    requireOrg('admin'),
+    async (req, res) => {
+      const gone = await deleteProject(
+        (req as AuthedRequest).orgId as string,
+        param(req, 'id') as string,
+      );
+      res.status(gone ? 200 : 404).json(gone ? { ok: true } : { error: 'not-found' });
+    },
+  );
 
   return app;
 }

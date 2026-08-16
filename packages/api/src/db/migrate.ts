@@ -12,7 +12,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { all, db, run } from './index.ts';
+import { all, exec, run } from './index.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -21,15 +21,15 @@ interface Applied {
   hash: string;
 }
 
-export function migrate(log: (msg: string) => void = console.log): void {
-  db().exec(`CREATE TABLE IF NOT EXISTS migrations (
+export async function migrate(log: (msg: string) => void = console.log): Promise<void> {
+  await exec(`CREATE TABLE IF NOT EXISTS migrations (
     name       TEXT PRIMARY KEY,
     hash       TEXT NOT NULL,
     applied_at INTEGER NOT NULL
   )`);
 
   const applied = new Map(
-    all<Applied>('SELECT name, hash FROM migrations').map((m) => [m.name, m.hash]),
+    (await all<Applied>('SELECT name, hash FROM migrations')).map((m) => [m.name, m.hash]),
   );
   const files = readdirSync(HERE)
     .filter((f) => f.endsWith('.sql'))
@@ -50,12 +50,17 @@ export function migrate(log: (msg: string) => void = console.log): void {
       );
     }
 
-    db().exec(sql);
-    run('INSERT INTO migrations (name, hash, applied_at) VALUES (?, ?, ?)', name, hash, Date.now());
+    await exec(sql);
+    await run(
+      'INSERT INTO migrations (name, hash, applied_at) VALUES (?, ?, ?)',
+      name,
+      hash,
+      Date.now(),
+    );
     log(`  applied ${name}`);
     count++;
   }
   log(count === 0 ? '✓ database already up to date' : `✓ applied ${count} migration(s)`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) migrate();
+if (import.meta.url === `file://${process.argv[1]}`) await migrate();
