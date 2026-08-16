@@ -83,9 +83,10 @@ body {
   align-items: center;
   gap: 0.5rem;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  /* No overflow clipping here. The truncation belongs to the wordmark (see .brand-name), and
+     on a narrow screen that name is display: none — so this box collapses to exactly the
+     mascot's 48x32, and clipping it cropped the mascot's glow into a hard-edged rectangle.
+     text-overflow never worked at this level either: the text is in the span, not here. */
 }
 
 .mark {
@@ -630,6 +631,12 @@ code {
    reader via the link's own label. */
 .brand-name {
   display: none;
+  /* Truncation lives here rather than on .brand, so a long name still ellipsises without the
+     clip reaching the mascot's glow. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @media (min-width: 30rem) {
