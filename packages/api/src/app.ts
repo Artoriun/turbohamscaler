@@ -21,8 +21,10 @@ import {
   createSession,
   destroyAllSessions,
   destroySession,
+  destroySessionByHandle,
   hashPassword,
-  SESSION_COOKIE,
+  sessionHandle,
+  sessionsFor,
   verifyPassword,
 } from './auth.ts';
 import { clearSessionCookie, readSessionCookie, setSessionCookie } from './cookies.ts';
@@ -261,6 +263,34 @@ export function createApp(): Hono<AuthVariables> {
     await deleteUser(userId);
     clearSessionCookie(c);
     return c.json({ ok: true });
+  });
+
+  /**
+   * The devices this account is signed in on.
+   *
+   * Identified by a handle, never by the session id — that id is the cookie, so returning it
+   * would turn the page that lists your sessions into the easiest way to steal one.
+   */
+  app.get('/api/me/sessions', requireUser, async (c) => {
+    const current = readSessionCookie(c);
+    const sessions = (await sessionsFor(c.get('userId'))).map((s) => ({
+      ...s,
+      current: current ? s.handle === sessionHandle(current) : false,
+    }));
+    return c.json({ sessions });
+  });
+
+  app.post('/api/me/sessions/:handle/revoke', requireUser, async (c) => {
+    const handle = param(c, 'handle');
+    if (!handle || !(await destroySessionByHandle(c.get('userId'), handle))) {
+      return c.json({ error: 'not-found' }, 404);
+    }
+    // Revoking the session making the request is allowed — it is how you sign this device out
+    // from a list of devices — so the cookie has to go with it.
+    if (readSessionCookie(c) && sessionHandle(readSessionCookie(c) as string) === handle) {
+      clearSessionCookie(c);
+    }
+    return c.json({ sessions: await sessionsFor(c.get('userId')) });
   });
 
   // ── organisations ──────────────────────────────────────────────────────────────────────
@@ -593,6 +623,8 @@ export const ROUTE_MANIFEST: RouteSpec[] = [
   { method: 'patch', path: '/api/me', auth: 'user' },
   { method: 'post', path: '/api/me/password', auth: 'user' },
   { method: 'delete', path: '/api/me', auth: 'user' },
+  { method: 'get', path: '/api/me/sessions', auth: 'user' },
+  { method: 'post', path: '/api/me/sessions/:handle/revoke', auth: 'user' },
   { method: 'post', path: '/api/orgs', auth: 'user' },
   { method: 'patch', path: '/api/orgs/:orgId', auth: 'admin' },
   { method: 'delete', path: '/api/orgs/:orgId', auth: 'owner' },

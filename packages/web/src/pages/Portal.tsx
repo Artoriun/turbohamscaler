@@ -14,6 +14,7 @@ import LanguageToggle from '../components/LanguageToggle';
 import Mascot from '../components/Mascot';
 import ThemeToggle from '../components/ThemeToggle';
 import { fill, pathFor, resolveLang, useT } from '../i18n';
+import type { SessionSummary } from '../lib/api';
 import {
   ApiError,
   apiAcceptInvitation,
@@ -34,6 +35,8 @@ import {
   apiRenameOrg,
   apiRenameSelf,
   apiRevokeInvitation,
+  apiRevokeSession,
+  apiSessions,
   apiSetMemberRole,
   apiSignIn,
   apiSignOut,
@@ -591,7 +594,79 @@ function Account({ onChanged }: { onChanged: () => void }) {
 
       {notice ? <p className="muted small">{notice}</p> : null}
       {error ? <p className="error">{error}</p> : null}
+
+      <Sessions />
     </section>
+  );
+}
+
+/**
+ * The devices this account is signed in on.
+ *
+ * "Sign out everywhere" existed with no way to see what everywhere was, which made both the
+ * question people actually have — is anything signed in that should not be — and the narrower
+ * answer — end just that one — impossible.
+ *
+ * Each row is named by a handle, never by the session id: that id is the cookie, so a list of
+ * them would be a list of working keys.
+ */
+function Sessions() {
+  const t = useT();
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+
+  const load = useCallback(() => {
+    apiSessions()
+      .then(({ sessions: list }) => setSessions(list))
+      .catch((err) => {
+        if (!(err instanceof ApiError) || err.status !== 401) throw err;
+      });
+  }, []);
+
+  useEffect(load, [load]);
+
+  return (
+    <div className="invites">
+      <div className="panel-head">
+        <h3>{t.portal.sessions}</h3>
+        <span className="count">{sessions.length}</span>
+      </div>
+      {sessions.length === 0 ? (
+        <p className="muted small">{t.portal.sessionsNone}</p>
+      ) : (
+        <ul className="list">
+          {sessions.map((s) => {
+            const when = new Date(s.createdAt).toLocaleString();
+            return (
+              <li key={s.handle}>
+                <div className="grow">
+                  <span className="title">
+                    {s.current ? t.portal.sessionCurrent : <code>{s.handle}</code>}
+                  </span>
+                  <span className="meta">{fill(t.portal.sessionSince, { when })}</span>
+                </div>
+                <button
+                  type="button"
+                  className="ghost"
+                  aria-label={fill(t.portal.sessionRevokeNamed, { when })}
+                  onClick={() => {
+                    apiRevokeSession(s.handle)
+                      .then(({ sessions: list }) => {
+                        // Revoking this device ends the session making the request, so the
+                        // portal has to notice rather than sit on a dead cookie.
+                        if (s.current) window.location.reload();
+                        else setSessions(list);
+                      })
+                      .catch(() => load());
+                  }}
+                >
+                  {t.portal.sessionRevoke}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

@@ -74,7 +74,9 @@ npm run db:reset       # delete the local database and reseed
   your password, close your account. Passwords are hashed with Web Crypto PBKDF2 and sessions
   are opaque ids in a table, so revoking one actually revokes it — which is why changing a
   password ends every other session, and why closing an account is refused while it is the
-  only owner of an organisation
+  only owner of an organisation. Your live sessions
+  are listed and can be ended one at a time, named by a hash prefix rather than by the session
+  id — that id is the cookie, so a list of them would be a list of working keys
 - **Organisations** you can create, rename and delete, with `member` / `admin` / `owner` roles
   and per-tenant projects. Roles can
   be changed, members removed, and anyone can leave — except the last owner, because an
@@ -206,6 +208,13 @@ what the sitemap is built from, and left unset it points at this repository's Pa
 is wrong for a fork.
 
 **Node 22** is required (`.nvmrc`).
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — in particular the rules the build enforces, which
+are checks rather than preferences.
 
 ---
 
