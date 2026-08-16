@@ -9,9 +9,15 @@
  * The server itself is in lib/static-server.mjs, shared with the Lighthouse audit so both
  * measure a page served by identical rules.
  */
-import { createStaticServer, listen } from './lib/static-server.mjs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { baseFromShell, createStaticServer, listen } from './lib/static-server.mjs';
 
 const [dist, port, apiPort] = [process.argv[2], Number(process.argv[3]), Number(process.argv[4])];
 
-await listen(createStaticServer({ dist, basePath: process.env.BASE_PATH ?? '/', apiPort }), port);
+// Read from the build, not the environment: serving a build at a prefix it was not made for
+// leaves the router's basename disagreeing with the URL, and every route misses.
+const basePath = baseFromShell(readFileSync(join(dist, 'index.html'), 'utf8'));
+
+await listen(createStaticServer({ dist, basePath, apiPort }), port);
 console.log(`serving ${dist} on ${port}`);

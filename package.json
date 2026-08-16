@@ -22,11 +22,12 @@
     "test:unit": "node --disable-warning=ExperimentalWarning --import tsx --test \"packages/web/src/**/*.test.ts\" \"packages/shared/src/**/*.test.ts\"",
     "test": "npm run test:api && npm run test:unit",
     "test:e2e": "playwright test --project=desktop --project=mobile",
-    "test:e2e:dist": "E2E_TARGET=dist playwright test --project=dist",
+    "test:e2e:dist": "npm run prerender && E2E_TARGET=dist playwright test --project=dist",
     "check:budgets": "node scripts/check-budgets.mjs",
     "ci": "node scripts/ci-local.mjs",
     "check:tenancy": "node scripts/check-tenancy.mjs",
-    "check:lighthouse": "node scripts/check-lighthouse.mjs"
+    "check:lighthouse": "node scripts/check-lighthouse.mjs",
+    "prerender": "npm run build --workspace=@hamscaler/web && node scripts/prerender.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.14",

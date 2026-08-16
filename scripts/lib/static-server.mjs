@@ -23,6 +23,22 @@ const TYPES = {
 };
 
 /**
+ * The base path a build was made for, read out of the build itself.
+ *
+ * Vite bakes the base into every asset URL, so the built HTML is the authority on it. Taking it
+ * from an environment variable instead means a build made at `/` can be served at
+ * `/turbohamscaler/`, where the router's basename no longer matches the URL and every route
+ * misses — which renders the not-found page and, during prerendering, writes it to disk as the
+ * home page.
+ *
+ * @param {string} html contents of the built index.html
+ */
+export function baseFromShell(html) {
+  const match = html.match(/(?:src|href)="([^"]*\/)assets\//);
+  return match?.[1] || '/';
+}
+
+/**
  * @param {object} options
  * @param {string} options.dist       directory to serve
  * @param {string} [options.basePath] prefix the host mounts the app at, e.g. '/turbohamscaler/'
@@ -59,7 +75,18 @@ export function createStaticServer({ dist, basePath = '/', apiPort }) {
     if (base !== '/' && path.startsWith(base)) path = path.slice(base.length - 1);
 
     let file = join(dist, path);
-    if (!existsSync(file) || statSync(file).isDirectory()) file = join(dist, 'index.html');
+    // A directory resolves to its own index.html before anything else — that is what a static
+    // host does, and without it /ja fell through to the root index.html and served the English
+    // page under a Japanese URL.
+    if (existsSync(file) && statSync(file).isDirectory()) {
+      const indexed = join(file, 'index.html');
+      file = existsSync(indexed) ? indexed : join(dist, 'index.html');
+    } else if (!existsSync(file)) {
+      // The single-page-app fallback. 404.html is what a real host serves here; using it keeps
+      // this honest about what an unknown path actually returns.
+      const fallback = join(dist, '404.html');
+      file = existsSync(fallback) ? fallback : join(dist, 'index.html');
+    }
     res.writeHead(200, {
       'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream',
       'Cache-Control': file.includes('/assets/')

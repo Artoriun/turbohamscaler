@@ -84,7 +84,7 @@ jobs:
       # because a shared runner's timings drift more than the thing being measured. Uses the
       # Chromium already installed above rather than provisioning a second browser.
       - name: Lighthouse
-        run: npm run check:lighthouse
+        run: npm run prerender && npm run check:lighthouse
 
       - name: Upload Playwright report
         if: failure()
@@ -114,25 +114,15 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Build for Pages
-        run: npm run build
+      # Builds, then writes each public route out with its text already in the markup, plus
+      # 404.html and a file for every known route. Without those files every route but the root
+      # answers with a 404 *status* while rendering correctly — invisible to a person, and
+      # exactly what a crawler records.
+      - name: Build and prerender for Pages
+        run: npm run prerender
         env:
           VITE_BASE: ${{ env.BASE_PATH }}
-
-      # A single-page app on a static host needs the 404 to be the app itself, or a deep link
-      # like /turbohamscaler/app returns the host's own 404 and never boots the router.
-      #
-      # The known routes additionally get a real file each. Without them every route but the
-      # root answers with a 404 *status* while rendering correctly — invisible to a person,
-      # but it is what a crawler records, so the Japanese pages would never be indexed.
-      - name: SPA fallback and route files
-        run: |
-          cd packages/web/dist
-          cp index.html 404.html
-          for route in ja app ja/app; do
-            mkdir -p "$route"
-            cp index.html "$route/index.html"
-          done
+          BASE_PATH: ${{ env.BASE_PATH }}
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
