@@ -77,15 +77,18 @@ export default function Portal() {
       </main>
     );
   }
-  if (!hasApi) return <NoApi />;
-  if (!session) {
+  // Both screens below stand alone, without the portal's header — so the controls that live in
+  // that header have to come with them, or a visitor who lands here has no way to change
+  // language or theme. The no-API screen is what the static deploy always shows, so it needs
+  // them most.
+  if (!hasApi || !session) {
     return (
       <>
         <div className="floating-controls">
           <LanguageToggle />
           <ThemeToggle />
         </div>
-        <SignIn onDone={load} />
+        {hasApi ? <SignIn onDone={load} /> : <NoApi />}
       </>
     );
   }
