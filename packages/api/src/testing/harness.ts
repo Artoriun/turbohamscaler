@@ -5,8 +5,7 @@
  * be ordered.
  */
 
-import type { Server } from 'node:http';
-import type { Express } from 'express';
+import { type ServerType, serve } from '@hono/node-server';
 import { createApp } from '../app.ts';
 import { closeDb } from '../db/index.ts';
 import { migrate } from '../db/migrate.ts';
@@ -19,11 +18,11 @@ export interface Harness {
 export async function startApi(): Promise<Harness> {
   process.env.DATABASE_URL = ':memory:';
   closeDb();
-  migrate(() => {});
-  const app: Express = createApp();
-  const server: Server = await new Promise((resolve) => {
-    const s = app.listen(0, () => resolve(s));
-  });
+  await migrate(() => {});
+  // The same app object the deployed Worker exports; only the thing listening differs.
+  const server = (await new Promise((resolve) => {
+    const s = serve({ fetch: createApp().fetch, port: 0 }, () => resolve(s));
+  })) as ServerType;
   const port = (server.address() as { port: number }).port;
   return {
     base: `http://127.0.0.1:${port}`,

@@ -1,0 +1,35 @@
+# Cloudflare Workers deployment for the API.
+#
+# The alternative to render.yaml, not a replacement for it: the same app runs on both, because
+# the routes are a Hono app on Web-standard Request/Response, the database is behind a driver
+# interface, and password hashing uses Web Crypto. See the README for the switch.
+#
+# COST. Workers' free plan allows 10ms of CPU per request. Hashing a password properly costs
+# more than that — deliberately — so this needs the Workers Paid plan ($5/mo at the time of
+# writing). Lowering the iteration count to fit the free tier would be trading the security of
+# every stored password for the hosting bill, which is not a trade this starter makes.
+
+name = "turbohamscaler-api"
+main = "packages/api/src/worker.ts"
+compatibility_date = "2026-08-01"
+# Gives the Worker Node's built-in modules where it needs them. Nothing on the request path
+# uses one — that is what the driver and hashing seams are for — but the flag costs nothing and
+# removes a class of surprise when adding a dependency later.
+compatibility_flags = ["nodejs_compat"]
+
+# The binding name must match Env.DB in worker.ts. Create the database first:
+#   npx wrangler d1 create hamscaler
+# then paste the id it prints here.
+[[d1_databases]]
+binding = "DB"
+database_name = "hamscaler"
+database_id = "REPLACE_ME"
+
+# Migrations are the .sql files the Node build applies at start-up. D1 applies them from the
+# command line instead, because a Worker has no filesystem and every isolate would otherwise
+# race the same DDL:
+#   npx wrangler d1 migrations apply hamscaler --remote
+migrations_dir = "packages/api/src/db"
+
+[vars]
+NODE_ENV = "production"
