@@ -16,7 +16,7 @@ import { join } from 'node:path';
 
 const API = 'packages/api/src';
 /** Tables whose rows belong to exactly one organisation. */
-const TENANT_TABLES = ['projects', 'invitations'];
+const TENANT_TABLES = ['projects', 'invitations', 'audit_events'];
 /**
  * A query may opt out by writing `tenancy-exempt:` followed by the reason in the doc comment
  * above it. Accepting an invitation is the case this exists for: the token is what names the

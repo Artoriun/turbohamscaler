@@ -12,6 +12,7 @@
 
 import { randomUUID } from 'node:crypto';
 import type {
+  AuditEvent,
   Invitation,
   Membership,
   Organisation,
@@ -257,6 +258,59 @@ export function markInvitationAccepted(orgId: string, id: string): boolean {
       id,
     ) > 0
   );
+}
+
+// ── audit log (tenant-owned) ─────────────────────────────────────────────────────────────
+
+interface AuditRow {
+  id: string;
+  org_id: string;
+  action: string;
+  actor_id: string | null;
+  actor_label: string;
+  subject: string;
+  detail: string;
+  created_at: number;
+}
+
+/** Appends an event. Never updated and never deleted — that is what makes it a record. */
+export function recordAudit(
+  orgId: string,
+  action: string,
+  actor: { id: string; label: string },
+  subject = '',
+  detail = '',
+): void {
+  run(
+    `INSERT INTO audit_events
+       (id, org_id, action, actor_id, actor_label, subject, detail, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    randomUUID(),
+    orgId,
+    action,
+    actor.id,
+    actor.label,
+    subject,
+    detail,
+    now(),
+  );
+}
+
+export function listAudit(orgId: string, limit = 50): AuditEvent[] {
+  return all<AuditRow>(
+    'SELECT * FROM audit_events WHERE org_id = ? ORDER BY created_at DESC, id DESC LIMIT ?',
+    orgId,
+    limit,
+  ).map((r) => ({
+    id: r.id,
+    orgId: r.org_id,
+    action: r.action,
+    actorId: r.actor_id,
+    actorLabel: r.actor_label,
+    subject: r.subject,
+    detail: r.detail,
+    createdAt: r.created_at,
+  }));
 }
 
 // ── projects (tenant-owned) ──────────────────────────────────────────────────────────────

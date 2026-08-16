@@ -283,10 +283,37 @@ test('an owner can change a role and remove someone, but not strand the organisa
     .click();
   // Scoped to the member list: the accepted invitation stays on record below it, deliberately,
   // so the organisation keeps a note of who was let in.
-  const memberList = host.locator('.panel > ul.list');
+  // Anchored to the Members panel by its heading: the portal now has several panels that each
+  // contain a list, so a bare '.panel > ul.list' matches whichever comes first.
+  const memberList = host
+    .locator('section.panel')
+    .filter({ has: host.getByRole('heading', { name: 'Members', exact: true }) })
+    .locator('> ul.list');
   await expect(memberList.getByText(guestEmail)).toHaveCount(0);
   await expect(memberList.locator('li')).toHaveCount(1);
 
   await hostCtx.close();
   await guestCtx.close();
+});
+
+test('the activity log records what an admin did', async ({ browser }) => {
+  const hostEmail = unique();
+  const guestEmail = unique();
+
+  const hostCtx = await browser.newContext();
+  const host = await hostCtx.newPage();
+  await signUp(host, hostEmail);
+
+  await expect(host.getByRole('heading', { name: 'Activity' })).toBeVisible();
+  await expect(host.getByText('Nothing has happened yet.')).toBeVisible();
+
+  await host.getByLabel('Address to invite').fill(guestEmail);
+  await host.getByRole('button', { name: 'Create invitation' }).click();
+
+  // The log refreshes on the next membership change; reload is the honest way to read it now.
+  await host.reload();
+  await expect(host.getByText(`Invited ${guestEmail}`)).toBeVisible();
+  await expect(host.getByText(new RegExp(`by .*${hostEmail}`))).toBeVisible();
+
+  await hostCtx.close();
 });

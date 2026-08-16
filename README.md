@@ -81,6 +81,8 @@ npm run db:reset       # delete the local database and reseed
   side — a valid session asking for another organisation's rows by id
 - **Migrations** applied in order and hashed, so editing one that has already run is an error
   rather than a silent divergence
+- **An audit log** of every membership and invitation change, append-only, admin-only, and
+  keeping the actor's name as it was — a record whose subject has been deleted still reads
 - **Rate-limited sign-in**, recorded in the database so a restart does not reset it
 - **Seeded demo data**, two organisations, no cloud account
 - **Light, dark or follow the system**, chosen before first paint so the theme never flashes

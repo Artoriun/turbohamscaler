@@ -99,6 +99,24 @@ export interface Invitation {
   acceptedAt: number | null;
 }
 
+/**
+ * One thing that happened in an organisation.
+ *
+ * The actor is described as well as identified: an id alone stops meaning anything the moment
+ * that account is deleted, and a record that outlives its subject is the whole point.
+ */
+export interface AuditEvent {
+  id: string;
+  orgId: string;
+  action: string;
+  actorId: string | null;
+  /** The actor's name and address as they were when this happened. */
+  actorLabel: string;
+  subject: string;
+  detail: string;
+  createdAt: number;
+}
+
 /** What `/api/me` answers: who you are and which organisations you can act in. */
 export interface Session {
   user: User;
