@@ -8,7 +8,14 @@
  */
 
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { INVITE_TTL_SECONDS, LIMITS, MIN_PASSWORD_LENGTH, type Role } from '@hamscaler/shared';
+import {
+  hasRole,
+  INVITE_TTL_SECONDS,
+  LIMITS,
+  MIN_PASSWORD_LENGTH,
+  ROLES,
+  type Role,
+} from '@hamscaler/shared';
 import cookieParser from 'cookie-parser';
 import express, { type Express } from 'express';
 import {
@@ -38,8 +45,11 @@ import {
   membersOf,
   organisationById,
   organisationsFor,
+  ownerCount,
+  removeMember,
   revokeInvitation,
   roleIn,
+  setMemberRole,
   updateProject,
 } from './repo.ts';
 import { clearAttempts, recordAttempt } from './signInAttempts.ts';
@@ -166,6 +176,85 @@ export function createApp(): Express {
 
   app.get('/api/orgs/:orgId/members', requireUser, requireOrg('member'), (req, res) => {
     res.json({ members: membersOf((req as AuthedRequest).orgId as string) });
+  });
+
+  /**
+   * Change what someone may do.
+   *
+   * Two rules beyond the role gate, both about not handing away more than you hold: you cannot
+   * change the role of someone ranked above you, and only an owner can make another owner.
+   * Without the first, an admin could demote the owner who appointed them.
+   */
+  app.patch('/api/orgs/:orgId/members/:userId', requireUser, requireOrg('admin'), (req, res) => {
+    const orgId = (req as AuthedRequest).orgId as string;
+    const actorRole = (req as AuthedRequest).role as Role;
+    const targetId = param(req, 'userId');
+    const { role } = req.body ?? {};
+
+    if (!targetId || !ROLES.includes(role)) {
+      res.status(400).json({ error: 'invalid-details' });
+      return;
+    }
+    const targetRole = roleIn(orgId, targetId);
+    if (!targetRole) {
+      res.status(404).json({ error: 'not-found' });
+      return;
+    }
+    if (!hasRole(actorRole, targetRole) || (role === 'owner' && actorRole !== 'owner')) {
+      res.status(403).json({ error: 'insufficient-role' });
+      return;
+    }
+    // Demoting the last owner leaves an organisation nobody can administer.
+    if (targetRole === 'owner' && role !== 'owner' && ownerCount(orgId) === 1) {
+      res.status(409).json({ error: 'last-owner' });
+      return;
+    }
+    setMemberRole(orgId, targetId, role as Role);
+    res.json({ members: membersOf(orgId) });
+  });
+
+  app.delete('/api/orgs/:orgId/members/:userId', requireUser, requireOrg('admin'), (req, res) => {
+    const orgId = (req as AuthedRequest).orgId as string;
+    const actorRole = (req as AuthedRequest).role as Role;
+    const targetId = param(req, 'userId');
+    if (!targetId) {
+      res.status(400).json({ error: 'invalid-details' });
+      return;
+    }
+    const targetRole = roleIn(orgId, targetId);
+    if (!targetRole) {
+      res.status(404).json({ error: 'not-found' });
+      return;
+    }
+    if (!hasRole(actorRole, targetRole)) {
+      res.status(403).json({ error: 'insufficient-role' });
+      return;
+    }
+    if (targetRole === 'owner' && ownerCount(orgId) === 1) {
+      res.status(409).json({ error: 'last-owner' });
+      return;
+    }
+    removeMember(orgId, targetId);
+    res.json({ members: membersOf(orgId) });
+  });
+
+  /**
+   * Leave an organisation.
+   *
+   * Its own route rather than a self-delete on the one above, because the two need different
+   * permissions: removing somebody else is an admin's job, and leaving is everyone's. Sharing a
+   * route would mean the role gate could not sit in the middleware.
+   */
+  app.post('/api/orgs/:orgId/leave', requireUser, requireOrg('member'), (req, res) => {
+    const orgId = (req as AuthedRequest).orgId as string;
+    const userId = (req as AuthedRequest).userId as string;
+    if ((req as AuthedRequest).role === 'owner' && ownerCount(orgId) === 1) {
+      // Hand it over first. Leaving would strand every other member.
+      res.status(409).json({ error: 'last-owner' });
+      return;
+    }
+    removeMember(orgId, userId);
+    res.json({ organisations: organisationsFor(userId) });
   });
 
   // ── invitations ───────────────────────────────────────────────────────────────────────
@@ -340,6 +429,9 @@ export const ROUTE_MANIFEST: RouteSpec[] = [
   { method: 'post', path: '/api/auth/sign-out-everywhere', auth: 'user' },
   { method: 'get', path: '/api/me', auth: 'user' },
   { method: 'get', path: '/api/orgs/:orgId/members', auth: 'member' },
+  { method: 'patch', path: '/api/orgs/:orgId/members/:userId', auth: 'admin' },
+  { method: 'delete', path: '/api/orgs/:orgId/members/:userId', auth: 'admin' },
+  { method: 'post', path: '/api/orgs/:orgId/leave', auth: 'member' },
   { method: 'post', path: '/api/orgs/:orgId/invitations', auth: 'admin' },
   { method: 'get', path: '/api/orgs/:orgId/invitations', auth: 'admin' },
   { method: 'delete', path: '/api/orgs/:orgId/invitations/:id', auth: 'admin' },

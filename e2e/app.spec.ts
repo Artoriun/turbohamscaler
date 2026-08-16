@@ -242,3 +242,51 @@ test('an invitation is the way into someone else’s organisation', async ({ bro
   await hostCtx.close();
   await guestCtx.close();
 });
+
+test('an owner can change a role and remove someone, but not strand the organisation', async ({
+  browser,
+}) => {
+  const hostEmail = unique();
+  const guestEmail = unique();
+
+  const hostCtx = await browser.newContext();
+  const host = await hostCtx.newPage();
+  await signUp(host, hostEmail);
+  await host.getByLabel('Address to invite').fill(guestEmail);
+  await host.getByRole('button', { name: 'Create invitation' }).click();
+  const link = await host.locator('.invite-token code').innerText();
+
+  const guestCtx = await browser.newContext();
+  const guest = await guestCtx.newPage();
+  await signUp(guest, guestEmail);
+  await guest.goto(link);
+  await guest.getByRole('button', { name: 'Accept invitation' }).click();
+  await expect(guest.getByRole('combobox', { name: 'Organisation' }).locator('option')).toHaveCount(
+    2,
+  );
+
+  await host.reload();
+  const guestRole = host.getByLabel(/^Role for /).last();
+  await expect(guestRole).toHaveValue('member');
+  await guestRole.selectOption('admin');
+  await expect(guestRole).toHaveValue('admin');
+
+  // The owner is the only one, so the server refuses to demote them and the UI says why.
+  const ownerRole = host.getByLabel(/^Role for /).first();
+  await ownerRole.selectOption('member');
+  await expect(host.getByText('An organisation needs an owner.')).toBeVisible();
+  await expect(ownerRole).toHaveValue('owner');
+
+  await host
+    .getByRole('button', { name: /^Remove .* from this organisation$/ })
+    .last()
+    .click();
+  // Scoped to the member list: the accepted invitation stays on record below it, deliberately,
+  // so the organisation keeps a note of who was let in.
+  const memberList = host.locator('.panel > ul.list');
+  await expect(memberList.getByText(guestEmail)).toHaveCount(0);
+  await expect(memberList.locator('li')).toHaveCount(1);
+
+  await hostCtx.close();
+  await guestCtx.close();
+});

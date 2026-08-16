@@ -83,6 +83,20 @@ export const apiDeleteProject = (orgId: string, id: string) =>
 export const apiMembers = (orgId: string) =>
   call<{ members: (User & { role: Role })[] }>(`/api/orgs/${orgId}/members`);
 
+export const apiSetMemberRole = (orgId: string, userId: string, role: Role) =>
+  call<{ members: (User & { role: Role })[] }>(`/api/orgs/${orgId}/members/${userId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ role }),
+  });
+
+export const apiRemoveMember = (orgId: string, userId: string) =>
+  call<{ members: (User & { role: Role })[] }>(`/api/orgs/${orgId}/members/${userId}`, {
+    method: 'DELETE',
+  });
+
+export const apiLeaveOrg = (orgId: string) =>
+  call<{ organisations: OrganisationMembership[] }>(`/api/orgs/${orgId}/leave`, { method: 'POST' });
+
 export const apiInvitations = (orgId: string) =>
   call<{ invitations: Invitation[] }>(`/api/orgs/${orgId}/invitations`);
 

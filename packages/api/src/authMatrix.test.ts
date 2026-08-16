@@ -44,6 +44,7 @@ const url = (path: string, orgId: string) =>
   `${api.base}${path
     .replace(':orgId', orgId)
     .replace(':token', 'not-a-real-token')
+    .replace(':userId', plainMember.userId)
     .replace(':id', projectId)}`;
 
 describe('anonymous callers', () => {
