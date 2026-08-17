@@ -4,11 +4,11 @@ import { defineConfig, devices } from '@playwright/test';
 //   dev  (default) the Vite dev server proxying to a live API
 //   dist the built output served statically, with the same API behind it
 //
-// Taken from `--project=dist` as well as E2E_TARGET, so `npm run test:e2e:dist` needs no
-// environment variable in front of it. `VAR=value cmd` is shell syntax that Windows does not
-// have, and it was the one thing in this project's scripts that could not run there.
-const TARGET =
-  process.env.E2E_TARGET ?? (process.argv.some((a) => a === '--project=dist') ? 'dist' : 'dev');
+// Set by scripts/e2e-dist.mjs rather than by a `VAR=value` prefix, which is shell syntax
+// Windows does not have. Reading it out of process.argv was tried and is why this comment is
+// here: it worked locally, chose 'dev' in CI, and pointed the suite at a port nothing was
+// serving.
+const TARGET = process.env.E2E_TARGET ?? 'dev';
 const WEB_PORT = Number(process.env.WEB_PORT ?? (TARGET === 'dev' ? 3410 : 3462));
 const API_PORT = Number(process.env.API_PORT ?? (TARGET === 'dev' ? 4410 : 4462));
 
