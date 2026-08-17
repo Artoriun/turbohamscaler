@@ -175,12 +175,16 @@ covered — which is why step 2 is not optional.
 ## Testing
 
 `npm run ci` runs the pipeline in CI's order: Biome, `tsc`, the tenancy guards, API and unit
-tests, **the API tests again on a local Worker + D1**, the build, a gzipped bundle budget,
+tests, a check that the deploy blueprint really builds and signs in, **the API tests again on
+Postgres and again on a local Worker + D1**, the build, gzipped bundle and image budgets,
 Playwright against the dev server, the suite again against the built output, and Lighthouse.
 
-Running the API suite twice is the point: the same assertions pass on Node and on Workers, so
-"it runs on both" is checked rather than asserted. It is all local — wrangler runs on Miniflare
-— so it needs no Cloudflare account.
+Running the API suite three times is the point. The same assertions pass against SQLite,
+Postgres and D1 — minus thirteen the Worker cannot share, each skipped where it is written and
+for a stated reason — so "the database is behind an interface" is checked rather than asserted.
+Checked against something that disagrees, too: SQLite and D1 share a dialect, so those two
+agreeing proved very little. It is all local, since wrangler runs on Miniflare and Postgres runs
+as WebAssembly: no Cloudflare account, no container, no database server.
 
 Accessibility is checked twice, because one check cannot reach everything. Lighthouse audits
 the public page and `/app`, but it cannot sign in — so `e2e/a11y.spec.ts` sweeps the signed-in
@@ -247,12 +251,16 @@ routes are Hono, the database is behind `Driver` (`db/index.ts` for Node, `db/d1
 `db/postgres.ts` for Postgres), and password hashing is Web Crypto rather than `node:crypto`.
 `index.ts` is the Node entry point and `worker.ts` the Workers one; both import the same app.
 
-That is checked rather than claimed: `npm run test:api`, `npm run test:api:postgres` and
-`npm run test:api:worker` run the *same* 142 assertions against SQLite, Postgres and D1. The
-first two SQLite-family drivers agreeing proved little — they share a dialect. Postgres has a
-different wire protocol, different placeholders and a 32-bit `INTEGER`, and it passes unchanged.
-Postgres runs through PGlite, which is Postgres compiled to WebAssembly, so that check needs no
-container and no credentials.
+That is checked rather than claimed. `npm run test:api` and `npm run test:api:postgres` run the
+same 146 assertions against SQLite and Postgres; `npm run test:api:worker` runs 133 of them
+against a local Worker and D1 — the thirteen it skips are the ones that reach into this
+process's database or swap a module-level seam, which a separate Worker does not share, and
+each says so where it is skipped.
+
+Two SQLite-family drivers agreeing proved very little, since they share a dialect. Postgres has
+a different wire protocol, different placeholders and a 32-bit `INTEGER` that a millisecond
+timestamp overflows, and the app runs against it unchanged. It goes through PGlite — Postgres
+compiled to WebAssembly — so the check needs no container, no server and no credentials.
 
 Workers' free plan allows 10ms of CPU per request, and hashing a password properly costs more
 than that on purpose — so Workers means the $5/mo paid plan. Lowering the iteration count to fit
