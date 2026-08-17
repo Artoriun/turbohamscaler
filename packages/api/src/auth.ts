@@ -20,7 +20,7 @@
  */
 
 import { createHash, randomUUID } from 'node:crypto';
-import { SESSION_RENEW_UNDER_SECONDS, SESSION_TTL_SECONDS } from '@hamscaler/shared';
+import { LIMITS, SESSION_RENEW_UNDER_SECONDS, SESSION_TTL_SECONDS } from '@hamscaler/shared';
 import { all, one, run } from './db/index.ts';
 
 // Hashing lives in password.ts, written against Web Crypto so the API is not pinned to Node.
@@ -52,8 +52,9 @@ export async function createSession(userId: string): Promise<{ id: string; expir
 /**
  * The session behind a cookie, or null.
  *
- * Expired rows are deleted on the way past rather than swept by a job: the read has already
- * found the row, and a session nobody presents costs one row until they do.
+ * An expired row is deleted on the way past: the read has already found it, so removing it
+ * costs nothing extra. That covers every session anybody comes back to. The ones nobody comes
+ * back to are what sweepExpired is for.
  */
 export async function readSession(id: string): Promise<SessionRow | null> {
   const row = await one<SessionRow>(
@@ -128,4 +129,30 @@ export async function destroySessionByHandle(userId: string, handle: string): Pr
 /** Signs a user out everywhere — the recovery path when a device is lost or a token leaks. */
 export async function destroyAllSessions(userId: string): Promise<number> {
   return await run('DELETE FROM sessions WHERE user_id = ?', userId);
+}
+
+/**
+ * Clears out what has expired.
+ *
+ * Expired rows were only ever deleted when somebody presented one — cheap, and enough while
+ * every session comes back. The ones that never come back are the problem: a closed browser, a
+ * replaced phone, an abandoned sign-up. Nothing asks about those again, so they stay, and a
+ * write_rate row stays behind each of them on a foreign key. The same goes for a sign-in
+ * attempt against an address that never succeeds, which is to say every address an attacker
+ * tries: clearAttempts only runs after somebody gets the password right.
+ *
+ * At start-up rather than on a timer. A free instance restarts often enough for that to be
+ * frequent, a Worker has no timer to hang it on, and a scheduled sweep is one more thing to
+ * operate. For a real database with a long uptime, move it to a cron.
+ */
+export async function sweepExpired(): Promise<{ sessions: number; attempts: number }> {
+  const now = Date.now();
+  const sessions = await run('DELETE FROM sessions WHERE expires_at <= ?', now);
+  // Attempts only mean anything inside their window; past it recordAttempt starts a fresh
+  // count regardless, so an older row is decoration. Twice the window, to leave no doubt.
+  const attempts = await run(
+    'DELETE FROM sign_in_attempts WHERE first_at <= ?',
+    now - 2 * LIMITS.signInWindowMs,
+  );
+  return { sessions, attempts };
 }

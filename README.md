@@ -18,9 +18,9 @@ this is the bit nobody enjoys writing twice.
 > breakingly and without a migration path. Treat nothing here as settled.
 
 **Live demo:** https://turbohamscaler-demo.onrender.com — sign in as `turboham@example.com`
-with `hamster-wheel-9000`. It sleeps when nobody is using it, so the first request after a
-quiet spell takes a moment to wake, and the database starts fresh from the seed each time:
-break whatever you like.
+with `hamster-wheel-9000`. A scheduled ping keeps it awake — the free plan sleeps after fifteen
+idle minutes, and a cold start is a black holding page from the host rather than this app. The
+database starts fresh from the seed on every restart, so break whatever you like.
 
 **Public pages only:** https://artoriun.github.io/turbohamscaler/ — the same marketing pages
 as static files, with no server behind them.
@@ -63,11 +63,18 @@ Three workspaces: `packages/web`, `packages/api`, `packages/shared`.
 
 ## Quick start
 
+**Use this template** to get your own repository, or clone it if you would rather keep the
+history. Then:
+
 ```bash
 npm install
 npm run db:seed   # a demo tenant, so the app opens on something
 npm run dev       # web on 3410, API on 4410
 ```
+
+Node 22 or newer — `node:sqlite` is what makes the database work with no native build and no
+account, and it arrived in 22. The install refuses anything older rather than letting you find
+out at the first query.
 
 Sign in as `turboham@example.com` or `teemo@example.com`, password `hamster-wheel-9000`.
 TurboHam runs a wheelwright's; Teemo is in bedding. They are in separate organisations on
@@ -88,6 +95,7 @@ npm run test:e2e       # Playwright, against the dev server
 npm run test:e2e:dist  # the same, against the built output
 npm run check:tenancy  # structural guards on tenant isolation
 npm run check:deploy   # build and boot render.yaml's commands, then sign in
+npm run check:budgets  # bundle and image size ceilings
 npm run db:migrate     # apply pending migrations
 npm run db:reset       # delete the local database and reseed
 ```
@@ -123,8 +131,10 @@ npm run db:reset       # delete the local database and reseed
 - **Seeded demo data**, two organisations, no cloud account
 - **Light, dark or follow the system**, chosen before first paint so the theme never flashes
 - **Prerendered public pages** — each route is a real file with its text already in the HTML,
-  so a crawler that runs no JavaScript still sees the page and every URL answers 200, with a
-  generated `sitemap.xml` and a `robots.txt` pointing at it
+  so a crawler that runs no JavaScript still sees the page. A URL that exists answers 200 and
+  one that does not answers 404, with a generated `sitemap.xml`, a `robots.txt` pointing at it,
+  and social tags carrying the origin they are deployed to. Both deploys are prerendered, not
+  just the static one
 
 ---
 
