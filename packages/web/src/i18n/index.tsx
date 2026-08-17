@@ -91,6 +91,27 @@ export function useT(): Dictionary {
 }
 
 /** The active language and a setter, for the switcher. */
+/**
+ * Dates and times, in the language the page is being read in.
+ *
+ * `toLocaleString()` with no locale follows the browser, so a reader who had switched the page
+ * to Japanese still got 8/17/2026 — the app's own language switch had no effect on half the
+ * values on the screen. The tag comes from the same place every other translated string does.
+ */
+export function useFormat(): {
+  date: (ms: number) => string;
+  dateTime: (ms: number) => string;
+} {
+  const { lang } = useLanguageContext();
+  return useMemo(
+    () => ({
+      date: (ms: number) => new Date(ms).toLocaleDateString(lang),
+      dateTime: (ms: number) => new Date(ms).toLocaleString(lang),
+    }),
+    [lang],
+  );
+}
+
 export function useLang(): { lang: Lang; setLang: (lang: Lang) => void } {
   const { lang, setLang } = useLanguageContext();
   return { lang, setLang };

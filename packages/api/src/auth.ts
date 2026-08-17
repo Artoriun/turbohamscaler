@@ -9,9 +9,14 @@
  * building the very lookup table a session id already is; the trade is one indexed read per
  * request, which SQLite does in microseconds.
  *
- * Password hashing is re-exported from password.ts rather than written here, so this file has
- * no runtime-specific imports left and the API can be served by Node or by a Workers-style
- * runtime without a second copy of it.
+ * Password hashing is re-exported from password.ts rather than written here, because that is
+ * the part that had to change to run anywhere but Node: `node:crypto`'s scrypt has no Workers
+ * equivalent, and Web Crypto does.
+ *
+ * What is left of `node:crypto` here — randomUUID and a sha256 for session handles — runs on
+ * Workers under the `nodejs_compat` flag, which wrangler.toml sets. That flag is load-bearing,
+ * not insurance: this file, app.ts and repo.ts all import from `node:crypto` on the request
+ * path. Both files used to claim otherwise.
  */
 
 import { createHash, randomUUID } from 'node:crypto';
@@ -79,7 +84,6 @@ export async function destroySession(id: string): Promise<void> {
   await run('DELETE FROM sessions WHERE id = ?', id);
 }
 
-/** Signs a user out everywhere — the recovery path when a device is lost or a token leaks. */
 /**
  * The caller's live sessions, identified by a handle rather than by their ids.
  *
@@ -121,6 +125,7 @@ export async function destroySessionByHandle(userId: string, handle: string): Pr
   return (await run('DELETE FROM sessions WHERE id = ?', match.id)) > 0;
 }
 
+/** Signs a user out everywhere — the recovery path when a device is lost or a token leaks. */
 export async function destroyAllSessions(userId: string): Promise<number> {
   return await run('DELETE FROM sessions WHERE user_id = ?', userId);
 }
