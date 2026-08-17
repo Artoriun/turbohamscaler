@@ -35,6 +35,18 @@ export async function migrate(log: (msg: string) => void = console.log): Promise
     .filter((f) => f.endsWith('.sql'))
     .sort();
 
+  // Zero files is never right: there is at least one migration in the repository. It means the
+  // .sql files did not travel with the build — tsc copies only TypeScript — and the old code
+  // reported "already up to date" and then failed on the first query against a table that had
+  // never been created. A compiled deploy was broken this way and answered /health regardless,
+  // because /health deliberately does not touch the database.
+  if (files.length === 0) {
+    throw new Error(
+      `no .sql migrations found in ${HERE}. If this is a compiled build, the migrations were ` +
+        'not copied alongside the JavaScript — see the api package build script.',
+    );
+  }
+
   let count = 0;
   for (const name of files) {
     const sql = readFileSync(join(HERE, name), 'utf8');
