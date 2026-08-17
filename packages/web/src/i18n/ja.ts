@@ -11,7 +11,7 @@ export const ja: Dictionary = {
   nav: {
     overview: '概要',
     source: 'ソース',
-    openApp: 'アプリを開く',
+    openApp: 'デモを開く',
     sourceOnGitHub: 'GitHub でソースを見る',
   },
 

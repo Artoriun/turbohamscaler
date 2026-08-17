@@ -15,7 +15,7 @@ export const en = {
   nav: {
     overview: 'Overview',
     source: 'Source',
-    openApp: 'Open the app',
+    openApp: 'Open the demo',
     sourceOnGitHub: 'Source on GitHub',
   },
 

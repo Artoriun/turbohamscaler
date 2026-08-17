@@ -1,6 +1,11 @@
-/* The mascot: a 16-pose sprite sheet stepped through by keyframes, lifted from
-   TurboHamstarter so the two share a face. An SVG rather than the README's gif — the gif has
-   no alpha, so it carries a black box wherever the page is not black.
+/* The sprite sheet: 16 poses stepped through by keyframes.
+   NOTE: this is TurboHamstarter's hamster, and nothing renders it any more. It used to draw the
+   sign-in card and the no-API screen, which meant the first thing anybody saw after opening
+   *this* demo was the sibling project's mascot — the un-evolved one. Both now use the same
+   Mascot component as the headers, so the app shows the hamster this project is named after.
+   Kept because it is the only art here with idle poses, and because a starter that borrows a
+   face should show how. An SVG rather than the README's gif — the gif has no alpha, so it
+   carries a black box wherever the page is not black.
 
    Sized at exactly 2x the 16x15 grid so every source pixel maps to a whole device pixel; a
    fractional scale is what makes pixel art look soft. step-end holds each pose for its whole
@@ -21,6 +26,7 @@
    --accent per theme instead of pinning to one shade. */
 .mascot,
 .brand-mark,
+.auth-mascot,
 .hero-mascot {
   filter: drop-shadow(0 0 1px color-mix(in srgb, var(--accent) 55%, transparent))
     drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 30%, transparent));
@@ -56,6 +62,13 @@
 .mascot-md {
   width: 96px;
   height: 90px;
+}
+
+/* The mascot on the sign-in card and the no-API screen. Centred, because both sit above a
+   heading in a narrow panel rather than beside a wordmark. */
+.auth-mascot {
+  display: block;
+  margin: 0 auto 4px;
 }
 
 /* A glow only reads as one where it is lighter than what is behind it — true on a dark page,
