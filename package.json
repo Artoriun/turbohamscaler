@@ -29,11 +29,13 @@
     "check:lighthouse": "node scripts/check-lighthouse.mjs",
     "prerender": "npm run build --workspace=@hamscaler/web && node scripts/prerender.mjs",
     "test:api:worker": "node scripts/test-worker.mjs",
+    "test:api:postgres": "node scripts/test-postgres.mjs",
     "check:deploy": "node scripts/check-deploy.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
     "@biomejs/biome": "^2.3.14",
+    "@electric-sql/pglite": "^0.5.5",
     "@playwright/test": "^1.58.1",
     "axe-core": "^4.13.0",
     "tsx": "^4.20.7",

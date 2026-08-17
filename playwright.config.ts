@@ -1,3 +1,4 @@
+import { rmSync } from 'node:fs';
 import { defineConfig, devices } from '@playwright/test';
 
 // What the suite runs against:
@@ -9,6 +10,11 @@ import { defineConfig, devices } from '@playwright/test';
 // here: it worked locally, chose 'dev' in CI, and pointed the suite at a port nothing was
 // serving.
 const TARGET = process.env.E2E_TARGET ?? 'dev';
+
+// The suite creates accounts as it goes, so it needs a database that starts empty — and one
+// that is rebuilt from the current migrations rather than carrying an older schema forward.
+const E2E_DB = `.data/e2e-${TARGET}.db`;
+for (const suffix of ['', '-shm', '-wal']) rmSync(`${E2E_DB}${suffix}`, { force: true });
 const WEB_PORT = Number(process.env.WEB_PORT ?? (TARGET === 'dev' ? 3410 : 3462));
 const API_PORT = Number(process.env.API_PORT ?? (TARGET === 'dev' ? 4410 : 4462));
 
@@ -45,9 +51,12 @@ export default defineConfig({
   ],
   webServer: [
     {
-      // A database per run, thrown away after: the suite creates accounts, and a leftover file
-      // would make the second run fail on an email that already exists.
-      command: `DATABASE_URL=.data/e2e-${TARGET}.db API_PORT=${API_PORT} node --disable-warning=ExperimentalWarning --import tsx packages/api/src/index.ts`,
+      // A fresh database per run. This claimed to be one and was not: the file survived, so a
+      // schema change turned the next e2e run into "migration 0001 changed after it was
+      // applied" — a real guard firing on a stale artifact, which reads as the suite being
+      // broken. Deleted here rather than by the command, because `rm -f` is not a thing on
+      // Windows and this config is already running in node.
+      command: `DATABASE_URL=${E2E_DB} API_PORT=${API_PORT} node --disable-warning=ExperimentalWarning --import tsx packages/api/src/index.ts`,
       port: API_PORT,
       reuseExistingServer: false,
       stdout: 'ignore',

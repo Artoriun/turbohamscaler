@@ -7,8 +7,9 @@
 
 import { type ServerType, serve } from '@hono/node-server';
 import { createApp } from '../app.ts';
-import { closeDb } from '../db/index.ts';
+import { closeDb, setDriver } from '../db/index.ts';
 import { migrate } from '../db/migrate.ts';
+import { postgresDriver } from '../db/postgres.ts';
 
 export interface Harness {
   base: string;
@@ -25,8 +26,30 @@ export async function startApi(): Promise<Harness> {
     return { base: external.replace(/\/$/, ''), close: async () => {} };
   }
 
-  process.env.DATABASE_URL = ':memory:';
-  closeDb();
+  /**
+   * The same suite, against Postgres.
+   *
+   * `API_DRIVER=postgres` swaps the driver before the migrations run, so everything above the
+   * query helpers — repo.ts, the routes, the tenancy rules — is exercised unchanged against a
+   * database that shares no code with SQLite. That is what makes the portability claim
+   * evidence rather than architecture.
+   *
+   * PGlite is real Postgres compiled to WebAssembly, running in this process. A container
+   * would test the same dialect and cost a Docker daemon that a fresh clone does not have —
+   * and this repo's whole first-run promise is that there is nothing to install. Against a
+   * server, the same driver takes a `pg` Pool; see the example at the top of postgres.ts.
+   */
+  let closeDriver = async () => {};
+  if (process.env.API_DRIVER === 'postgres') {
+    const { PGlite } = await import('@electric-sql/pglite');
+    const pg = await PGlite.create();
+    setDriver(postgresDriver(pg));
+    closeDriver = () => pg.close();
+  } else {
+    process.env.DATABASE_URL = ':memory:';
+    closeDb();
+  }
+
   await migrate(() => {});
   // The same app object the deployed Worker exports; only the thing listening differs.
   const server = (await new Promise((resolve) => {
@@ -37,7 +60,8 @@ export async function startApi(): Promise<Harness> {
     base: `http://127.0.0.1:${port}`,
     close: () =>
       new Promise((resolve) => {
-        server.close(() => {
+        server.close(async () => {
+          await closeDriver();
           closeDb();
           resolve();
         });

@@ -64,6 +64,13 @@ jobs:
         timeout-minutes: 12
         run: npm run check:deploy
 
+      # The same suite on Postgres, which is what turns the Driver interface from an assertion
+      # into a checked claim: SQLite and D1 share a dialect, so those two agreeing proved very
+      # little. PGlite is Postgres compiled to WebAssembly, so this needs no service, no
+      # container and no credentials.
+      - name: API tests on Postgres
+        run: npm run test:api:postgres
+
       # The same assertions against the Worker and a local D1, so "runs on both runtimes" is
       # something the build checks rather than something the README claims. Entirely local —
       # wrangler runs on Miniflare, so this needs no Cloudflare account.

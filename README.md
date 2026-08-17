@@ -54,7 +54,7 @@ Light and dark are both first-class; the theme is chosen before first paint, so 
 | | |
 | --- | --- |
 | **Front end** | React, TypeScript, Vite, React Router |
-| **Back end** | Hono, SQLite (`node:sqlite`) or Cloudflare D1 |
+| **Back end** | Hono, SQLite (`node:sqlite`), Cloudflare D1 or Postgres |
 | **Tooling** | TurboRepo, Biome, Playwright |
 
 Three workspaces: `packages/web`, `packages/api`, `packages/shared`.
@@ -91,6 +91,7 @@ npm run prerender      # build, then write each public route out with its text i
 npm run ci             # everything CI runs, in order
 npm run test           # API and unit tests
 npm run test:api:worker # the same API tests, against a local Worker + D1
+npm run test:api:postgres # the same API tests again, against real Postgres
 npm run test:e2e       # Playwright, against the dev server
 npm run test:e2e:dist  # the same, against the built output
 npm run check:tenancy  # structural guards on tenant isolation
@@ -226,10 +227,26 @@ npx wrangler d1 migrations apply hamscaler --remote
 npx wrangler deploy
 ```
 
-Nothing in `packages/api/src` changes between the two. Three seams make that true: the routes
-are Hono, the database is behind `Driver` (`db/index.ts` for Node, `db/d1.ts` for D1), and
-password hashing is Web Crypto rather than `node:crypto`. `index.ts` is the Node entry point and
-`worker.ts` the Workers one; both import the same app.
+**Postgres, when SQLite is not the answer** — `db/postgres.ts` implements the same `Driver`
+against any `pg` client:
+
+```ts
+import { Pool, types } from 'pg';
+types.setTypeParser(types.builtins.INT8, Number); // timestamps, not strings
+setDriver(postgresDriver(new Pool({ connectionString: process.env.DATABASE_URL })));
+```
+
+Nothing in `packages/api/src` changes between any of the three. Three seams make that true: the
+routes are Hono, the database is behind `Driver` (`db/index.ts` for Node, `db/d1.ts` for D1,
+`db/postgres.ts` for Postgres), and password hashing is Web Crypto rather than `node:crypto`.
+`index.ts` is the Node entry point and `worker.ts` the Workers one; both import the same app.
+
+That is checked rather than claimed: `npm run test:api`, `npm run test:api:postgres` and
+`npm run test:api:worker` run the *same* 142 assertions against SQLite, Postgres and D1. The
+first two SQLite-family drivers agreeing proved little — they share a dialect. Postgres has a
+different wire protocol, different placeholders and a 32-bit `INTEGER`, and it passes unchanged.
+Postgres runs through PGlite, which is Postgres compiled to WebAssembly, so that check needs no
+container and no credentials.
 
 Workers' free plan allows 10ms of CPU per request, and hashing a password properly costs more
 than that on purpose — so Workers means the $5/mo paid plan. Lowering the iteration count to fit

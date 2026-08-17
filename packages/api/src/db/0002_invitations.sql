@@ -9,8 +9,6 @@
 -- An invitation is addressed to a string. Nothing here is ever checked against the users
 -- table, so there is no question to leak the answer to.
 
-PRAGMA foreign_keys = ON;
-
 CREATE TABLE IF NOT EXISTS invitations (
   id          TEXT PRIMARY KEY,
   org_id      TEXT NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
@@ -24,11 +22,11 @@ CREATE TABLE IF NOT EXISTS invitations (
   -- created the invitation.
   token_hash  TEXT NOT NULL UNIQUE,
   invited_by  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at  INTEGER NOT NULL,
-  expires_at  INTEGER NOT NULL,
+  created_at  BIGINT NOT NULL,
+  expires_at  BIGINT NOT NULL,
   -- Set on acceptance rather than deleting the row, so an organisation keeps a record of who
   -- was let in and by whom.
-  accepted_at INTEGER
+  accepted_at BIGINT
 );
 
 CREATE INDEX IF NOT EXISTS invitations_by_org ON invitations (org_id, created_at);

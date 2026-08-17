@@ -30,7 +30,7 @@ after(async () => {
 
 describe('sweeping what expired', { skip }, () => {
   test('removes sessions nobody came back to, and leaves live ones alone', async () => {
-    const before = await all<{ id: string }>('SELECT id FROM sessions', []);
+    const before = await all<{ id: string }>('SELECT id FROM sessions');
     assert.ok(before.length >= 1, 'the signed-up actor should hold a session');
 
     // A session that lapsed and was never presented again — a closed browser, a replaced phone.
@@ -45,7 +45,7 @@ describe('sweeping what expired', { skip }, () => {
     const swept = await sweepExpired();
     assert.ok(swept.sessions >= 1, `expected the lapsed session to go; swept ${swept.sessions}`);
 
-    const remaining = await all<{ id: string }>('SELECT id FROM sessions', []);
+    const remaining = await all<{ id: string }>('SELECT id FROM sessions');
     assert.ok(
       !remaining.some((r) => r.id === 'abandoned-session'),
       'the expired session should be gone',
@@ -73,9 +73,9 @@ describe('sweeping what expired', { skip }, () => {
 
     await sweepExpired();
 
-    const keys = (
-      await all<{ email_key: string }>('SELECT email_key FROM sign_in_attempts', [])
-    ).map((r) => r.email_key);
+    const keys = (await all<{ email_key: string }>('SELECT email_key FROM sign_in_attempts')).map(
+      (r) => r.email_key,
+    );
     assert.ok(!keys.includes('ancient@example.com'), 'an attempt past its window is decoration');
     assert.ok(
       keys.includes('current@example.com'),
