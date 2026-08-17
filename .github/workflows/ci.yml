@@ -134,9 +134,11 @@ jobs:
         run: npm ci
 
       # Prerendering boots the built app in a real browser, so this job needs one too — the
-      # checks job installing it does nothing for a job running on its own runner.
+      # checks job installing it does nothing for a job running on its own runner. --only-shell:
+      # this job navigates and reads the DOM, the same as render.yaml's build — no screenshot,
+      # no trace, nothing the full browser has and the shell does not.
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps --only-shell chromium
 
       # Builds, then writes each public route out with its text already in the markup, plus
       # 404.html and a file for every known route. Without those files every route but the root
