@@ -168,6 +168,7 @@ export const ja: Dictionary = {
     inviteNote:
       '招待は指定したアドレス宛てに作られます。アカウント一覧とは照合しないため、誰が登録済みかが分かることはありません。',
     inviteTokenHeading: 'このリンクを相手に送ってください',
+    inviteUndelivered: 'メールを送信できませんでした。このリンクを直接お渡しください',
     inviteTokenNote: '表示はこの一度きりです。保存されないので、いまコピーしてください。',
     inviteCopy: 'コピー',
     inviteCopied: 'コピーしました',

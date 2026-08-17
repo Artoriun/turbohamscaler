@@ -155,12 +155,19 @@ export const apiInvitations = (orgId: string) =>
 /**
  * The token comes back exactly once, here. It is not stored, so there is no second chance to
  * read it — the caller has to hand it over now.
+ *
+ * Optional, because the API withholds it whenever something delivered the invitation by mail:
+ * a live credential in a response body ends up in the browser's memory and in the logs in
+ * between. Typing it as always present was a lie that every caller believed, and the one case
+ * it is missing is the one a real deployment is in. `undelivered` is the third possibility —
+ * a mailer was configured and failed — where the token comes back precisely because nobody
+ * else is going to carry it.
  */
 export const apiInvite = (orgId: string, email: string, role: Role) =>
-  call<{ invitation: Invitation; token: string }>(`/api/orgs/${orgId}/invitations`, {
-    method: 'POST',
-    body: JSON.stringify({ email, role }),
-  });
+  call<{ invitation: Invitation; token?: string; undelivered?: boolean }>(
+    `/api/orgs/${orgId}/invitations`,
+    { method: 'POST', body: JSON.stringify({ email, role }) },
+  );
 
 export const apiRevokeInvitation = (orgId: string, id: string) =>
   call<void>(`/api/orgs/${orgId}/invitations/${id}`, { method: 'DELETE' });

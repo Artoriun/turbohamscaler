@@ -182,14 +182,17 @@ export function createApp(): Hono<AuthVariables> {
 
   app.post('/api/auth/sign-out', requireUser, async (c) => {
     const id = readSessionCookie(c);
-    if (id) destroySession(id);
+    // Awaited. The driver behind these helpers is asynchronous, and a promise nobody waits on
+    // is one the runtime is free to drop when the response goes out — which on D1 means the
+    // session survives the sign-out that was supposed to end it.
+    if (id) await destroySession(id);
     clearSessionCookie(c);
     return c.json({ ok: true });
   });
 
   /** Ends every session for this user, on every device. */
   app.post('/api/auth/sign-out-everywhere', requireUser, async (c) => {
-    const count = destroyAllSessions(c.get('userId'));
+    const count = await destroyAllSessions(c.get('userId'));
     clearSessionCookie(c);
     return c.json({ ok: true, sessions: count });
   });
@@ -459,8 +462,16 @@ export function createApp(): Hono<AuthVariables> {
     }
     const orgId = c.get('orgId');
     const token = randomBytes(32).toString('base64url');
+
+    // Only the insert is caught here, and only because the partial unique index is how a second
+    // outstanding invitation for the same address is refused. The try used to reach around the
+    // audit write and the send as well, so a mail provider that was down — a wrong key, a 421,
+    // anything — came back as "already-invited": a wrong answer about a different thing, with
+    // the invitation already written and the token spent. The admin retried, collided with
+    // their own invitation, and the person was never told.
+    let invitation: Awaited<ReturnType<typeof createInvitation>>;
     try {
-      const invitation = await createInvitation(
+      invitation = await createInvitation(
         orgId,
         email,
         role as Role,
@@ -468,25 +479,34 @@ export function createApp(): Hono<AuthVariables> {
         hashToken(token),
         INVITE_TTL_SECONDS,
       );
-      await recordAudit(orgId, 'invitation.created', await actorOf(c), email, role as string);
+    } catch {
+      return c.json({ error: 'already-invited' }, 409);
+    }
 
-      const mailer = getMailer();
-      const org = await organisationById(orgId);
-      const link = `${appUrl(c)}/app?invite=${token}`;
+    await recordAudit(orgId, 'invitation.created', await actorOf(c), email, role as string);
+
+    const mailer = getMailer();
+    const org = await organisationById(orgId);
+    const link = `${appUrl(c)}/app?invite=${token}`;
+    // Delivery is reported separately from creation. The invitation exists either way — it is a
+    // row, and it was written — so failing the whole request would say it does not.
+    let delivered = mailer.delivers;
+    try {
       await mailer.send({
         to: email,
         subject: `You have been invited to ${org?.name ?? 'an organisation'}`,
         body: `You have been invited to join ${org?.name ?? 'an organisation'} as a ${role}.\n\n${link}\n\nThe invitation expires in seven days. If you were not expecting it, ignore this message.`,
       });
-
-      // The token comes back only when nothing can deliver it. Returning a live credential in a
-      // response body puts it in the browser's memory and in any log between here and there, so
-      // it is done when it is the only way to pass the invitation on, and not otherwise.
-      return c.json(mailer.delivers ? { invitation } : { invitation, token }, 201);
-    } catch {
-      // The partial unique index rejects a second outstanding invitation for the same address.
-      return c.json({ error: 'already-invited' }, 409);
+    } catch (err) {
+      delivered = false;
+      console.error(`[mail] could not send an invitation to ${email}:`, err);
     }
+
+    // The token comes back only when nothing delivered it. Returning a live credential in a
+    // response body puts it in the browser's memory and in any log between here and there, so
+    // it is done when it is the only way to pass the invitation on, and not otherwise — which
+    // now includes the case where a mailer was configured and did not manage it.
+    return c.json(delivered ? { invitation } : { invitation, token, undelivered: true }, 201);
   });
 
   app.get('/api/orgs/:orgId/invitations', requireUser, requireOrg('admin'), async (c) => {

@@ -174,6 +174,7 @@ export const en = {
     inviteNote:
       'An invitation is addressed to whoever you name. Nothing is checked against the account list, so this never reveals who already has an account.',
     inviteTokenHeading: 'Send them this link',
+    inviteUndelivered: 'The email did not go out — send them this link yourself',
     inviteTokenNote: 'Shown once. It is not stored, so copy it now.',
     inviteCopy: 'Copy',
     inviteCopied: 'Copied',

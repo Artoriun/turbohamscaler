@@ -52,6 +52,38 @@ const app = createApp();
 
 if (WEB_DIST) {
   const dist = WEB_DIST;
+
+  /**
+   * How long each kind of file may be reused.
+   *
+   * Vite puts a hash of the contents into the name of everything under /assets, which is the
+   * whole reason those names are ugly: the file at a given name can never change, so it never
+   * needs revalidating. Without a header saying so, the server sent only Last-Modified and
+   * every visitor asked about every asset on every page load — paying a round trip each time
+   * to be told nothing had changed.
+   *
+   * The HTML is the opposite. It is the one file whose name stays put, so it has to be checked
+   * every time or a deploy never reaches anybody: no-cache means revalidate, not "do not
+   * store", so it still costs a 304 rather than a download.
+   */
+  app.use('/*', async (c, next) => {
+    await next();
+    if (c.res.headers.has('cache-control')) return;
+    const path = c.req.path;
+    if (path.startsWith('/api')) return;
+    // Vite's shape is name-HASH.ext, so the hash is what follows the last hyphen — not a
+    // dot-separated segment, which is what this looked for at first and never matched.
+    if (/^\/assets\/.+-[0-9a-zA-Z_-]{8,}\.[a-z0-9]+$/.test(path)) {
+      c.res.headers.set('cache-control', 'public, max-age=31536000, immutable');
+    } else if (/\.(?:png|jpg|jpeg|svg|gif|webp|ico|woff2?)$/.test(path)) {
+      // Named by hand rather than by hash — a favicon or a touch icon — so it can change under
+      // the same name. A day is long enough to be worth having and short enough to fix.
+      c.res.headers.set('cache-control', 'public, max-age=86400');
+    } else {
+      c.res.headers.set('cache-control', 'no-cache');
+    }
+  });
+
   // Anything the API did not answer falls through to the built files.
   app.use('/*', serveStatic({ root: dist }));
 

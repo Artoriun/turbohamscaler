@@ -157,7 +157,16 @@ export default function Portal() {
             type="button"
             className="ghost"
             onClick={async () => {
-              await apiSignOut();
+              // The local session goes either way. An unhandled rejection here left somebody
+              // pressing a button that did nothing and said nothing — and the request can fail
+              // for ordinary reasons, a dropped connection being the obvious one. Clearing it
+              // locally is the honest outcome: the cookie is gone from this tab, and a session
+              // the server still holds expires on its own.
+              try {
+                await apiSignOut();
+              } catch {
+                // Nothing to tell them. They asked to leave, and they are leaving.
+              }
               setSession(null);
             }}
           >
@@ -1050,6 +1059,9 @@ function Invitations({ orgId }: { orgId: string }) {
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('member');
   const [link, setLink] = useState('');
+  // Set when a mailer was configured and could not deliver. The invitation exists either way,
+  // so this is the difference between "it is on its way" and "nobody has been told yet".
+  const [undelivered, setUndelivered] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -1073,9 +1085,15 @@ function Invitations({ orgId }: { orgId: string }) {
     setError('');
     setCopied(false);
     try {
-      const { token } = await apiInvite(orgId, email.trim(), role);
-      // Where the invitee lands. BASE_URL keeps it right under a project subpath.
-      setLink(`${window.location.origin}${import.meta.env.BASE_URL}app?invite=${token}`);
+      const { token, undelivered } = await apiInvite(orgId, email.trim(), role);
+      // No token means a mailer took it, and the link is not this screen's to show. It used to
+      // be built regardless, which produced `?invite=undefined` — a link that looks real,
+      // copies cleanly, and opens nothing.
+      setLink(
+        // Where the invitee lands. BASE_URL keeps it right under a project subpath.
+        token ? `${window.location.origin}${import.meta.env.BASE_URL}app?invite=${token}` : '',
+      );
+      setUndelivered(Boolean(undelivered));
       setEmail('');
       load();
     } catch (err) {
@@ -1124,7 +1142,7 @@ function Invitations({ orgId }: { orgId: string }) {
 
       {link ? (
         <div className="invite-token">
-          <strong>{t.portal.inviteTokenHeading}</strong>
+          <strong>{undelivered ? t.portal.inviteUndelivered : t.portal.inviteTokenHeading}</strong>
           <code>{link}</code>
           <button
             type="button"

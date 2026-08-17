@@ -110,8 +110,23 @@ try {
   const page = await fetch(base);
   if (!page.ok)
     throw new Error(`GET / answered ${page.status} — the front end is not being served`);
-  if (!(await page.text()).includes('id="root"'))
-    throw new Error('GET / did not return the app shell');
+  const shell = await page.text();
+  if (!shell.includes('id="root"')) throw new Error('GET / did not return the app shell');
+
+  // Hashed assets have to be cacheable forever and the shell must not be, or a deploy either
+  // costs every visitor a round trip per file or never reaches them at all. Checked against the
+  // real asset name the build just produced, because the rule is a pattern match on that name
+  // and a pattern is exactly the kind of thing that stops matching without anybody noticing.
+  const asset = shell.match(/\/assets\/[^"']+\.(?:js|css)/)?.[0];
+  if (!asset) throw new Error('found no hashed asset in the shell to check caching on');
+  const assetCache = (await fetch(`${base}${asset}`)).headers.get('cache-control') ?? '';
+  if (!assetCache.includes('immutable')) {
+    throw new Error(`${asset} is not cacheable: cache-control: ${assetCache || '(none)'}`);
+  }
+  const shellCache = page.headers.get('cache-control') ?? '';
+  if (!shellCache.includes('no-cache')) {
+    throw new Error(`the shell must be revalidated; cache-control: ${shellCache || '(none)'}`);
+  }
 
   // The one that matters. Both previous breakages passed everything above this line.
   const signIn = await fetch(`${base}/api/auth/sign-in`, {
