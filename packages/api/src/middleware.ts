@@ -12,7 +12,7 @@
 
 import { hasRole, type Role } from '@hamscaler/shared';
 import type { Context, MiddlewareHandler } from 'hono';
-import { readSession, renewSession, SESSION_COOKIE } from './auth.ts';
+import { readSession, renewSession } from './auth.ts';
 import { readSessionCookie, setSessionCookie } from './cookies.ts';
 import { roleIn } from './repo.ts';
 import { recordWrite } from './writeLimit.ts';

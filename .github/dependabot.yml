@@ -1,0 +1,38 @@
+# Dependency updates, weekly.
+#
+# Grouped rather than one pull request per package: CI takes four minutes and a person has to
+# look at each one, so twelve separate bumps of the same tree is a way of guaranteeing none of
+# them get read.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # The things that build and test the project. They move together and break together.
+      tooling:
+        patterns:
+          - '@biomejs/*'
+          - '@playwright/*'
+          - turbo
+          - typescript
+          - vite
+          - '@vitejs/*'
+      runtime:
+        patterns:
+          - hono
+          - '@hono/*'
+          - react
+          - react-dom
+          - react-router-dom
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns:
+          - '*'

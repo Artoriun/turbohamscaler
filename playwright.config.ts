@@ -1,9 +1,14 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// E2E_TARGET picks what the suite runs against:
+// What the suite runs against:
 //   dev  (default) the Vite dev server proxying to a live API
 //   dist the built output served statically, with the same API behind it
-const TARGET = process.env.E2E_TARGET ?? 'dev';
+//
+// Taken from `--project=dist` as well as E2E_TARGET, so `npm run test:e2e:dist` needs no
+// environment variable in front of it. `VAR=value cmd` is shell syntax that Windows does not
+// have, and it was the one thing in this project's scripts that could not run there.
+const TARGET =
+  process.env.E2E_TARGET ?? (process.argv.some((a) => a === '--project=dist') ? 'dist' : 'dev');
 const WEB_PORT = Number(process.env.WEB_PORT ?? (TARGET === 'dev' ? 3410 : 3462));
 const API_PORT = Number(process.env.API_PORT ?? (TARGET === 'dev' ? 4410 : 4462));
 

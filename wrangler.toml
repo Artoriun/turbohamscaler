@@ -12,9 +12,10 @@
 name = "turbohamscaler-api"
 main = "packages/api/src/worker.ts"
 compatibility_date = "2026-08-01"
-# Gives the Worker Node's built-in modules where it needs them. Nothing on the request path
-# uses one — that is what the driver and hashing seams are for — but the flag costs nothing and
-# removes a class of surprise when adding a dependency later.
+# Gives the Worker Node's built-in modules. This is required, not a precaution: auth.ts,
+# app.ts and repo.ts all import randomUUID, randomBytes or createHash from `node:crypto` on the
+# request path. What the driver and hashing seams remove is the dependency on Node's *runtime* —
+# a synchronous SQLite and a scrypt with no Workers equivalent — not on every builtin.
 compatibility_flags = ["nodejs_compat"]
 
 # The binding name must match Env.DB in worker.ts. Create the database first:

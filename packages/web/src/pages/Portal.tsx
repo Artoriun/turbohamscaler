@@ -13,7 +13,7 @@ import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import LanguageToggle from '../components/LanguageToggle';
 import Mascot from '../components/Mascot';
 import ThemeToggle from '../components/ThemeToggle';
-import { fill, pathFor, resolveLang, useT } from '../i18n';
+import { fill, pathFor, resolveLang, useFormat, useT } from '../i18n';
 import type { SessionSummary } from '../lib/api';
 import {
   ApiError,
@@ -338,8 +338,14 @@ function AcceptInvitation({ onJoined }: { onJoined: () => void }) {
  */
 function Activity({ orgId, reloadKey }: { orgId: string; reloadKey: number }) {
   const t = useT();
+  const format = useFormat();
   const [events, setEvents] = useState<AuditEvent[]>([]);
 
+  // reloadKey is not read in here, and that is what it is for: the parent bumps it when a
+  // membership changes, and the only way to say "run this again" is to depend on it. Removing
+  // it — which is what the rule suggests — would leave the log showing what was true before
+  // the change that was just made.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a deliberate reload trigger
   useEffect(() => {
     let live = true;
     apiAudit(orgId)
@@ -379,7 +385,7 @@ function Activity({ orgId, reloadKey }: { orgId: string; reloadKey: number }) {
                 <span className="meta">
                   {fill(t.portal.activityBy, { who: e.actorLabel })} ·{' '}
                   <time dateTime={new Date(e.createdAt).toISOString()}>
-                    {new Date(e.createdAt).toLocaleString()}
+                    {format.dateTime(e.createdAt)}
                   </time>
                 </span>
               </div>
@@ -412,8 +418,9 @@ function OrganisationSettings({
   const canRename = org && org.role !== 'member';
 
   // The field follows the organisation you are looking at, rather than keeping what you typed
-  // for a different one.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed on the name it mirrors
+  // for a different one. (The suppression that used to sit here had stopped applying to
+  // anything — the rule no longer objects — and an ignore comment that suppresses nothing is
+  // worse than none: it reads as a known exception nobody needs to look at again.)
   useEffect(() => setName(org?.name ?? ''), [org?.name]);
 
   const attempt = (work: Promise<unknown>) => {
@@ -621,6 +628,7 @@ function Account({ onChanged }: { onChanged: () => void }) {
  */
 function Sessions() {
   const t = useT();
+  const format = useFormat();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
 
   const load = useCallback(() => {
@@ -644,7 +652,7 @@ function Sessions() {
       ) : (
         <ul className="list">
           {sessions.map((s) => {
-            const when = new Date(s.createdAt).toLocaleString();
+            const when = format.dateTime(s.createdAt);
             return (
               <li key={s.handle}>
                 <div className="grow">
@@ -698,6 +706,7 @@ function ProjectRow({
   onChanged: () => Promise<void> | void;
 }) {
   const t = useT();
+  const format = useFormat();
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(project.name);
   const [notes, setNotes] = useState(project.notes);
@@ -709,7 +718,7 @@ function ProjectRow({
         <div className="grow">
           <span className="title">{project.name}</span>
           {project.notes ? <span className="meta">{project.notes}</span> : null}
-          <span className="meta">{new Date(project.createdAt).toLocaleDateString()}</span>
+          <span className="meta">{format.date(project.createdAt)}</span>
         </div>
         <button
           type="button"

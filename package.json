@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
-    "check": "biome check .",
+    "check": "biome check --error-on-warnings .",
     "format": "biome check --write .",
     "typecheck": "turbo run typecheck",
     "db:migrate": "node --disable-warning=ExperimentalWarning --import tsx packages/api/src/db/migrate.ts",
@@ -22,7 +22,7 @@
     "test:unit": "node --disable-warning=ExperimentalWarning --import tsx --test \"packages/web/src/**/*.test.ts\" \"packages/shared/src/**/*.test.ts\"",
     "test": "npm run test:api && npm run test:unit",
     "test:e2e": "playwright test --project=desktop --project=mobile",
-    "test:e2e:dist": "npm run prerender && E2E_TARGET=dist playwright test --project=dist",
+    "test:e2e:dist": "npm run prerender && playwright test --project=dist",
     "check:budgets": "node scripts/check-budgets.mjs",
     "ci": "node scripts/ci-local.mjs",
     "check:tenancy": "node scripts/check-tenancy.mjs",

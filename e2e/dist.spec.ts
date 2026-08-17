@@ -74,8 +74,12 @@ test('the fallback stays the empty shell, not a copy of a prerendered page', asy
   // would show that page's text at every unknown URL, which is worse than showing nothing.
   const res = await page.request.get('/404.html');
   const html = await res.text();
-  expect(html).toContain('id="root"');
-  expect(html).not.toContain('multi-tenant app');
+
+  // The root being *empty* is the thing, not the absence of a phrase. This used to look for
+  // "multi-tenant app" anywhere in the file, which broke the moment the shell gained an
+  // og:description — the words were present, in a meta tag, with the page still an empty shell.
+  expect(html).toMatch(/<div id="root">\s*<\/div>/);
+  expect(html, 'a prerendered page has a rendered heading in its body').not.toMatch(/<h1[^>]*>/);
 });
 
 test('the sitemap lists the public pages and nothing else', async ({ page }) => {
