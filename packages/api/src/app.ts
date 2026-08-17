@@ -36,6 +36,7 @@ import {
   requireOrg,
   requireUser,
 } from './middleware.ts';
+import { captureError, log } from './observability.ts';
 import {
   addMember,
   createInvitation,
@@ -120,18 +121,60 @@ export function createApp(): Hono<AuthVariables> {
   const app = new Hono<AuthVariables>();
 
   /**
+   * One line per request, and a place for anything that throws to land.
+   *
+   * The request id is generated here rather than trusted from a header: an id a client can set
+   * is an id a client can collide, and correlating two unrelated requests is worse than having
+   * no id. It goes back out on the response so a report from somebody who saw a 500 can be
+   * matched to the line that recorded it.
+   *
+   * The organisation is read *after* the handler, because it is the tenancy middleware that
+   * establishes it — logging before that runs would record the one thing multi-tenant incidents
+   * are actually diagnosed by as undefined on every line.
+   */
+  app.use('*', async (c, next) => {
+    const requestId = randomUUID();
+    const started = Date.now();
+    c.set('requestId', requestId);
+    c.header('x-request-id', requestId);
+
+    try {
+      await next();
+    } catch (error) {
+      // Hono would turn this into a 500 on its own; what it would not do is tell anybody. An
+      // unhandled throw is the definition of something nobody is watching for.
+      captureError(error, { requestId, path: c.req.path, method: c.req.method });
+      throw error;
+    } finally {
+      const context = {
+        requestId,
+        method: c.req.method,
+        path: c.req.path,
+        status: c.res.status,
+        ms: Date.now() - started,
+        orgId: c.get('orgId'),
+        userId: c.get('userId'),
+      };
+      // A failed request is worth a louder line than a successful one, and 4xx is not an error
+      // in this app's sense: an unknown password and a missing project are the API working.
+      if (c.res.status >= 500) log.error('request', context);
+      else log.info('request', context);
+    }
+  });
+
+  /**
    * The headers a browser needs to be told, on every response.
    *
    * Here rather than in index.ts so both runtimes get them: a Worker deployment was serving
    * none of these, and so was the Node one. Each is a specific thing a browser will otherwise
    * do that this app never wants.
    *
-   * `nosniff` stops a JSON error body being re-interpreted as HTML and run. `frame-ancestors`
-   * refuses to be embedded, which is what makes clickjacking a signed-in session impossible.
-   * The referrer policy keeps invitation tokens out of the Referer header when somebody
-   * follows a link off an /app?invite=… page — the one URL here that carries a credential.
-   * HSTS only over https, because sending it from a dev server on http pins localhost to
-   * https in the browser and is a genuinely unpleasant thing to undo.
+   * `nosniff` stops a JSON error body being re-interpreted as HTML and run. Refusing to be
+   * framed is what makes clickjacking a signed-in session impossible. The referrer policy keeps
+   * invitation tokens out of the Referer header when somebody follows a link off an
+   * /app?invite=… page — the one URL here that carries a credential. HSTS only over https,
+   * because sending it from a dev server on http pins localhost to https in the browser and is
+   * a genuinely unpleasant thing to undo.
    */
   app.use('*', async (c, next) => {
     await next();
@@ -525,7 +568,9 @@ export function createApp(): Hono<AuthVariables> {
       });
     } catch (err) {
       delivered = false;
-      console.error(`[mail] could not send an invitation to ${email}:`, err);
+      // A provider being down is worth somebody's attention — an invitation nobody receives
+      // looks to the admin like it worked — so it is reported, not just written out.
+      captureError(err, { requestId: c.get('requestId'), orgId, event: 'invitation.send-failed' });
     }
 
     // The token comes back only when nothing delivered it. Returning a live credential in a

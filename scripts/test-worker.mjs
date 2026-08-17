@@ -30,9 +30,24 @@ if (run('npx', ['wrangler', 'd1', 'migrations', 'apply', 'hamscaler', '--local']
 }
 
 console.log(`  starting the Worker on ${PORT}…`);
-const worker = spawn('npx', ['wrangler', 'dev', '--local', '--port', String(PORT)], {
-  stdio: ['ignore', 'pipe', 'pipe'],
-});
+// LOG_LEVEL=silent: the API writes a structured line per request, and in here every one of
+// those goes through `wrangler dev`'s console relay. A few hundred requests of test traffic
+// through that relay wedged it — a single request hung for five minutes and the run failed on
+// a timeout rather than on anything being tested. The lines are wanted in production and are
+// noise here; what this suite is checking is the API's behaviour on Workers.
+// --var, not an environment variable: wrangler does not pass this process's env into the
+// Worker — only wrangler.toml's [vars] and --var reach it — so setting LOG_LEVEL here had no
+// effect at all, which took a bisect to notice.
+//
+// Silent because the API writes a structured line per request and every one of them goes
+// through `wrangler dev`'s console relay. A few hundred requests of test traffic wedged that
+// relay: one request hung for five minutes and the suite failed on a timeout rather than on
+// anything it was checking. The lines are wanted in production; here they are noise.
+const worker = spawn(
+  'npx',
+  ['wrangler', 'dev', '--local', '--port', String(PORT), '--var', 'LOG_LEVEL:silent'],
+  { stdio: ['ignore', 'pipe', 'pipe'] },
+);
 let log = '';
 worker.stdout.on('data', (d) => {
   log += d;

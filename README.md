@@ -128,6 +128,12 @@ npm run db:reset       # delete the local database and reseed
   rather than a silent divergence
 - **An audit log** of every membership and invitation change, append-only, admin-only, and
   keeping the actor's name as it was — a record whose subject has been deleted still reads
+- **Structured logs and an error seam** — one JSON line per request carrying a request id, the
+  organisation and the caller, because "one customer or everybody" is the first question any
+  multi-tenant incident asks and it cannot be answered afterwards if nothing recorded it. The id
+  goes back on the response, so a person reporting an error can be found in the log by it.
+  `packages/api/src/observability.ts` is the seam, with a worked Sentry example in its comments
+  and a default that writes to stderr and reaches nobody
 - **Rate-limited sign-in**, recorded in the database so a restart does not reset it
 - **Seeded demo data**, two organisations, no cloud account
 - **Light, dark or follow the system**, chosen before first paint so the theme never flashes

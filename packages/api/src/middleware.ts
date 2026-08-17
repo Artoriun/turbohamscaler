@@ -26,6 +26,8 @@ import { recordWrite } from './writeLimit.ts';
  */
 export interface AuthVariables {
   Variables: {
+    /** Set on every request by the logging middleware, so a handler can name it in a report. */
+    requestId: string;
     userId: string;
     /** The organisation from the URL, once membership has been confirmed. */
     orgId: string;
