@@ -17,8 +17,13 @@ this is the bit nobody enjoys writing twice.
 > because it is finished. The schema, the API and the layout of the packages will all change,
 > breakingly and without a migration path. Treat nothing here as settled.
 
-**Public pages:** https://artoriun.github.io/turbohamscaler/ — the app itself needs a server,
-so run it locally to sign in.
+**Live demo:** https://turbohamscaler-demo.onrender.com — sign in as `turboham@example.com`
+with `hamster-wheel-9000`. It sleeps when nobody is using it, so the first request after a
+quiet spell takes a moment to wake, and the database starts fresh from the seed each time:
+break whatever you like.
+
+**Public pages only:** https://artoriun.github.io/turbohamscaler/ — the same marketing pages
+as static files, with no server behind them.
 
 <br clear="right">
 
@@ -194,7 +199,7 @@ time. Served without one — as on the Pages deploy above — the portal says so
 showing a sign-in form that cannot work.
 
 **One free instance, both halves** — [`render.yaml`](render.yaml) deploys the whole thing to
-Render's free plan at no cost: the API serves the built front end, so pages and API share an
+Render's free plan at no cost, which is what the demo above is running on: the API serves the built front end, so pages and API share an
 origin. That is not a shortcut. The session cookie is `SameSite=Lax`, so a browser will not send
 it cross-*site* — two hosts means nobody can sign in, whatever the URLs say. One origin, and
 there is nothing to configure.
