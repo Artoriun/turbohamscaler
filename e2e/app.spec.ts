@@ -10,12 +10,18 @@ import { expect, test } from './fixtures';
 const password = 'correct-horse-battery';
 const unique = () => `e2e-${Date.now()}-${Math.random().toString(36).slice(2, 7)}@example.com`;
 
-async function signUp(page: import('@playwright/test').Page, email: string) {
+async function signUp(
+  page: import('@playwright/test').Page,
+  email: string,
+  // The organisation is named after the person, so this is also how a test asks for a long
+  // organisation name — which is what crowds the signed-in header.
+  name = 'Test person',
+) {
   // The portal, not '/': that is the public page now.
   await page.goto('/app');
   await page.getByRole('button', { name: 'Create an account instead' }).click();
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Name').fill('Test person');
+  await page.getByLabel('Name').fill(name);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
@@ -85,6 +91,87 @@ test('wrong credentials are refused without saying which part was wrong', async 
   await page.getByLabel('Email').fill('nobody@example.com');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('alert')).toHaveText('Those details were not accepted.');
+});
+
+test('nothing in the signed-in header sits on top of anything else', async ({ page }, testInfo) => {
+  // The header a signed-in visitor sees carries six controls — brand, organisation picker, role
+  // badge, language, theme, sign out — where the public one carries four. On a phone that row
+  // ran out of room and flex shrank the brand to 12px, but the mascot inside it is an img with a
+  // fixed width and does not shrink with its parent: it overflowed and sat on top of the
+  // organisation picker. Nothing caught it because every header test until now used the public
+  // page, which never has the picker.
+  //
+  // A long organisation name on purpose: the picker sizes to its contents, and it is that width
+  // that leaves the rest of the row nothing to work with. Signing up as "Test person" produces
+  // "Test person's workspace", which is short enough that the header fits either way — this test
+  // passed against the bug until the name got longer.
+  await signUp(page, unique(), 'Bartholomew Wheelwright-Hamsworth the Third');
+
+  const worst = await page.evaluate(() => {
+    // Named controls, not "every leaf element". The first version of this filtered to elements
+    // with no children, which quietly excluded the organisation picker — a <select> has <option>
+    // children — so it compared everything except the control that was being sat on, and passed
+    // against the bug it was written for.
+    const controls = [
+      '.brand-mark',
+      '.org-picker',
+      '.lang-toggle',
+      '.theme-toggle',
+      '.topbar .badge',
+      '.topbar .ghost',
+    ]
+      .map((sel) => ({ sel, el: document.querySelector(sel) as HTMLElement | null }))
+      .filter((c) => c.el && getComputedStyle(c.el).display !== 'none')
+      .map((c) => ({ sel: c.sel, box: (c.el as HTMLElement).getBoundingClientRect() }));
+
+    let worst = 0;
+    for (let i = 0; i < controls.length; i++) {
+      for (let j = i + 1; j < controls.length; j++) {
+        const a = controls[i].box;
+        const b = controls[j].box;
+        const x = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+        const y = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+        if (x > 1 && y > 1) worst = Math.max(worst, Math.round(x));
+      }
+    }
+    return worst;
+  });
+  expect(worst, `two header controls overlap by ${worst}px at ${testInfo.project.name}`).toBe(0);
+
+  // And the control that gives way must stay inside the box it belongs to, rather than hanging
+  // out of a parent that flex has squeezed to nothing.
+  const spill = await page.evaluate(() => {
+    const label = document.querySelector('.org-picker') as HTMLElement;
+    const select = label.querySelector('select') as HTMLElement;
+    return Math.round(select.getBoundingClientRect().right - label.getBoundingClientRect().right);
+  });
+  expect(spill, 'the organisation select hangs outside its own label').toBeLessThanOrEqual(1);
+
+  // Again at the narrowest width anybody browses on. The squeeze gets worse the less room there
+  // is, and the select's own minimum — it cannot be narrower than its dropdown arrow — is what
+  // the picker has to respect down here. Checked by resizing rather than by adding a third
+  // project, because it is one assertion rather than a whole suite's worth.
+  await page.setViewportSize({ width: 320, height: 844 });
+  const narrow = await page.evaluate(() => {
+    const label = document.querySelector('.org-picker') as HTMLElement;
+    const select = label.querySelector('select') as HTMLElement;
+    const mark = document.querySelector('.brand-mark') as HTMLElement;
+    const l = label.getBoundingClientRect();
+    const s = select.getBoundingClientRect();
+    const m = mark.getBoundingClientRect();
+    return {
+      spill: Math.round(s.right - l.right),
+      overlap: Math.round(Math.min(m.right, l.right) - Math.max(m.left, l.left)),
+    };
+  });
+  expect(narrow.spill, 'at 320px the select hangs outside its label').toBeLessThanOrEqual(1);
+  expect(narrow.overlap, 'at 320px the mascot sits on the organisation picker').toBeLessThanOrEqual(
+    0,
+  );
+  // Deliberately not asserting that all six controls *fit* at 320px. Whether they do depends on
+  // the font the platform picks — this passed on macOS and failed on CI's Linux, where the same
+  // labels are wider — and that is a property of font metrics rather than of the layout rule
+  // being tested here. Overlap and containment are the code's business; fitting is not.
 });
 
 test('the header stays one row and the page never scrolls sideways', async ({ page }, testInfo) => {
