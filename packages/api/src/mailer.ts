@@ -52,6 +52,43 @@ export const consoleMailer: Mailer = {
 let mailer: Mailer = consoleMailer;
 
 /**
+ * A worked example, because an interface on its own is a puzzle.
+ *
+ * Any HTTP mail API looks like this; Resend is used here only because its request is short
+ * enough to read. `fetch` rather than a client library, so it works unchanged on Workers, where
+ * most Node mail SDKs do not.
+ *
+ * ```ts
+ * // packages/api/src/index.ts, before serve()
+ * import { setMailer } from './mailer.ts';
+ *
+ * const key = process.env.RESEND_API_KEY;
+ * if (key) {
+ *   setMailer({
+ *     delivers: true,
+ *     async send({ to, subject, body }) {
+ *       const res = await fetch('https://api.resend.com/emails', {
+ *         method: 'POST',
+ *         headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+ *         body: JSON.stringify({ from: 'you@yourdomain.test', to, subject, text: body }),
+ *       });
+ *       // Throwing matters: the invitation route turns a failure here into a 500 rather than
+ *       // reporting an invitation that was created and never sent.
+ *       if (!res.ok) throw new Error(`mail failed: ${res.status} ${await res.text()}`);
+ *     },
+ *   });
+ * }
+ * ```
+ *
+ * On Workers the key is a binding rather than an environment variable, so the same block goes
+ * in worker.ts's fetch handler instead, reading it off `env`.
+ *
+ * `delivers: true` is the part that changes behaviour beyond sending: the invitation route stops
+ * returning the token once something can carry it. Leave it false on a mailer that only logs, or
+ * admins will have no way to pass an invitation on.
+ */
+
+/**
  * Installs a real mailer. Call it once at start-up, before serving.
  *
  * Nothing in this starter does — see the README. It is one function because the alternative,

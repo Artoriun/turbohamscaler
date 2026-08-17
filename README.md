@@ -86,9 +86,10 @@ npm run db:reset       # delete the local database and reseed
   organisation with no owner is one nobody can administer their way out of
 - **Invitations** — an admin issues a single-use token addressed to a person, who accepts it
   themselves. Only the token's hash is stored, and nothing is ever checked against the account
-  list, so inviting cannot be used to ask which addresses are registered. There is no mail
-  provider: `packages/api/src/mailer.ts` is the seam, and until one is installed the token is
-  returned to the admin to pass on by hand — install one and the API stops returning it
+  list, so inviting cannot be used to ask which addresses are registered. No mail provider ships,
+  by design: `packages/api/src/mailer.ts` is the seam, with a worked example in its comments and
+  a default that logs instead of sending. Until you install one the token is returned to the
+  admin to pass on by hand; install one and the API stops returning it
 - **Tenant isolation** enforced in one file and proven by a suite written from the attacker's
   side — a valid session asking for another organisation's rows by id
 - **Migrations** applied in order and hashed, so editing one that has already run is an error
@@ -164,6 +165,9 @@ The two halves deploy separately.
 on every push to `main`. Set `BASE_PATH` at the top of `.github/workflows/ci.yml` to your own
 repository name, or `/` for a custom domain. A static host needs `404.html` to be the app
 itself, or a deep link never boots the router — the workflow copies `index.html` over it.
+
+Nothing here has to be deployed for the starter to be useful — clone it and it runs. What
+follows is how to put it somewhere when you want to.
 
 **The app needs a server, and runs on two kinds.** The routes are a [Hono](https://hono.dev)
 app built on the Request and Response of the Web platform, so the same code serves a Node
