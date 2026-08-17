@@ -192,9 +192,15 @@ process or a Cloudflare Worker. Point the front end at whichever with `VITE_API_
 time. Served without one — as on the Pages deploy above — the portal says so rather than
 showing a sign-in form that cannot work.
 
-**Node, free to start** — [`render.yaml`](render.yaml) is a working blueprint. Be aware that a
-free instance has no persistent disk, so the SQLite file does not survive a restart. Fine for
-kicking the tyres; not a deployment.
+**One free instance, both halves** — [`render.yaml`](render.yaml) deploys the whole thing to
+Render's free plan at no cost: the API serves the built front end, so pages and API share an
+origin. That is not a shortcut. The session cookie is `SameSite=Lax`, so a browser will not send
+it cross-*site* — two hosts means nobody can sign in, whatever the URLs say. One origin, and
+there is nothing to configure.
+
+Free means the instance sleeps when idle and has no persistent disk, so the database rebuilds
+itself from the seed on each cold start. That is a good demo and a bad production database:
+attach a disk or point `DATABASE_URL` at a hosted one, and turn `DEMO_SEED` off.
 
 **Cloudflare Workers + D1, when it needs to be real** — [`wrangler.toml`](wrangler.toml):
 
