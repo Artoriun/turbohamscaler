@@ -9,7 +9,33 @@
          this site at all — it 404s, and that failure is logged to the console. -->
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="description" content="A TurboRepo starter for a multi-tenant web app." />
+    <meta
+      name="description"
+      content="A TurboRepo starter for a multi-tenant web app: accounts, organisations, roles and per-tenant data, with the isolation checks that keep them honest."
+    />
+
+    <!-- What a link to this looks like when somebody shares it. Without these it is a bare URL
+         with no title, no summary and no picture, which is most of what decides whether anyone
+         clicks it.
+
+         The URLs here are relative, and Vite rewrites them against the build's base. They have
+         to be absolute to work — a crawler has no page to resolve them against — so the
+         prerenderer rewrites them again with the real origin. That is also why it is the
+         prerenderer's job rather than a constant: the same build is served from GitHub Pages
+         under a subpath and from the demo host at a root. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="TurboHamscaler" />
+    <meta property="og:title" content="TurboHamscaler — the boring half of a multi-tenant app" />
+    <meta
+      property="og:description"
+      content="Accounts, organisations, roles and per-tenant data, with the isolation checks that keep them honest. Clone it and start on the part that is actually yours."
+    />
+    <meta property="og:image" content="/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="TurboHamscaler's landing page beside its pixel hamster mascot" />
+    <meta property="og:url" content="/" />
+    <meta name="twitter:card" content="summary_large_image" />
   </head>
   <body>
     <script>
