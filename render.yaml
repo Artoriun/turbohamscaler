@@ -42,9 +42,13 @@ services:
     #
     # It costs a Chromium download at build time, which is the price of rendering the pages with
     # the same browser the tests use rather than maintaining a second way to produce HTML.
+    # --only-shell: the headless shell alone is what prerender.mjs needs — it navigates and reads
+    # the DOM, never a screenshot — and it is under half the size of the full browser Playwright
+    # otherwise fetches. The first deploy of this build downloaded the full one and took over
+    # half an hour on the free plan's CPU; this is most of that difference.
     # `build` then `prerender`, both: prerender builds only the web workspace, so on its own it
     # leaves the API with no dist and the start command with nothing to run.
-    buildCommand: npm ci --include=dev && npx playwright install chromium && npm run build && npm run prerender
+    buildCommand: npm ci --include=dev && npx playwright install --only-shell chromium && npm run build && npm run prerender
     startCommand: node packages/api/dist/index.js
     # /health answers without touching the database, so a failing check means the process is
     # down rather than the schema being mid-migration.
