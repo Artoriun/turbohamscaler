@@ -26,6 +26,25 @@
     drop-shadow(0 0 4px color-mix(in srgb, var(--accent) 30%, transparent));
 }
 
+/* The glow left ghosts on mobile Chrome: after the big final stage, its halo stayed on screen
+   around the small first stage, as a bright rectangle the width of the image.
+
+   The cause was in the GIF, not the CSS. Every frame but the first was stored as a partial
+   sub-rectangle covering only the pixels that changed — the ordinary GIF space saving — so the
+   browser invalidated just that rectangle. A drop-shadow is computed from the whole image's
+   alpha, so repainting a sub-rectangle of it leaves the glow outside that rectangle showing the
+   previous frame's silhouette. The bigger the stage that came before, the further the stale
+   glow reached, which is why it looked like a different bug at every stage.
+
+   The GIFs are now written with full-canvas frames (see the guard in gif-frames.test.ts), so a
+   frame change invalidates the whole image. will-change is the belt to that braces: it gives
+   the mascot its own compositing layer, which is redrawn as a unit rather than in pieces. */
+.mascot,
+.brand-mark,
+.hero-mascot {
+  will-change: filter;
+}
+
 .mascot-sm {
   width: 32px;
   height: 30px;
