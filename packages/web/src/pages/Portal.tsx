@@ -227,7 +227,7 @@ function NoApi() {
   return (
     <main className="centre">
       <section className="panel auth">
-        <Mascot art="mark" className="auth-mascot" width={144} height={96} alt="" />
+        <Mascot art="mark" className="auth-mascot" width={96} height={64} alt="" />
         <h1>{t.portal.noApiTitle}</h1>
         <p className="muted">{t.portal.noApiBody}</p>
         <p className="muted">{t.portal.noApiRun}</p>
@@ -840,7 +840,7 @@ function SignIn({ onDone }: { onDone: () => void }) {
   return (
     <main className="centre">
       <form className="panel auth" onSubmit={submit}>
-        <Mascot art="mark" className="auth-mascot" width={144} height={96} alt="" />
+        <Mascot art="mark" className="auth-mascot" width={96} height={64} alt="" />
         <h1>{mode === 'in' ? t.auth.signIn : t.auth.createAccount}</h1>
         <p className="muted">{mode === 'in' ? t.auth.signInNote : t.auth.signUpNote}</p>
         <label>

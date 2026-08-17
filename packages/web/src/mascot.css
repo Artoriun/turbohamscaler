@@ -65,10 +65,26 @@
 }
 
 /* The mascot on the sign-in card and the no-API screen. Centred, because both sit above a
-   heading in a narrow panel rather than beside a wordmark. */
+   heading in a narrow panel rather than beside a wordmark.
+
+   Drawn at 96x64 — its own size — and not a pixel larger. This replaced a sprite that was
+   "sized at exactly 2x the 16x15 grid so every source pixel maps to a whole device pixel", and
+   the replacement was set to 144x96: a 1.5x scale, with the smooth interpolation a browser uses
+   by default. Every edge in the art came out soft. Pixel art has exactly two safe scales, whole
+   multiples and whole fractions, and this is 1x. */
 .auth-mascot {
   display: block;
   margin: 0 auto 4px;
+}
+
+/* Nearest-neighbour, so the two that *are* scaled by a whole factor stay hard-edged: the header
+   mark is drawn at half its 96x64 (an exact halving), and the auth mascot at 1:1, which a
+   retina display then doubles. Deliberately not applied to .hero-mascot — that one is 300x290
+   shown at 280x271, and nearest-neighbour on a fractional downscale drops whole rows of pixels
+   rather than blending them, which looks worse than the blend. */
+.brand-mark,
+.auth-mascot {
+  image-rendering: pixelated;
 }
 
 /* A glow only reads as one where it is lighter than what is behind it — true on a dark page,
