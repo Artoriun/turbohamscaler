@@ -8,6 +8,14 @@ npm run db:seed
 npm run dev        # web on 3410, API on 4410
 ```
 
+Node 22 or newer, and nothing else: `node:sqlite` is what makes the database work with no
+native build and no account, and it arrived in 22. The install refuses an older one rather
+than letting you find out at the first query.
+
+The first `npm run ci` fetches a Chromium for the browser tests, once. Lighthouse is fetched
+on demand too — it is only ever run as a subprocess, and as a dependency it put twenty
+advisories in front of anybody who had just cloned this.
+
 `npm run ci` runs the whole pipeline in the order CI runs it, derived from
 `.github/workflows/ci.yml` rather than duplicated — adding a step to the workflow adds it here
 for free. Run it before opening a pull request; it is the same thing that will decide whether
