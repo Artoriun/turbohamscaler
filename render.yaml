@@ -28,7 +28,11 @@ services:
     region: frankfurt
     rootDir: .
     # Both halves: the web build is what the API then serves.
-    buildCommand: npm install && npm run build
+    # --include=dev is not optional: NODE_ENV=production makes npm set omit=dev, and turbo,
+    # typescript and vite are all devDependencies — without it the build has no build tools and
+    # fails before it starts. Render sets NODE_ENV for a Node service whether or not the block
+    # below does, so this has to be explicit rather than achieved by leaving NODE_ENV unset.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: node packages/api/dist/index.js
     # /health answers without touching the database, so a failing check means the process is
     # down rather than the schema being mid-migration.

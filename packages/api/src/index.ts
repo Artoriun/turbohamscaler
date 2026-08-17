@@ -60,12 +60,17 @@ if (WEB_DIST) {
     // expecting JSON a document, and the failure would surface as a parse error somewhere else.
     if (c.req.path.startsWith('/api')) return c.json({ error: 'not-found' }, 404);
 
-    // Otherwise the single-page app answers, so a deep link still boots the router — but with a
-    // 404 status, because that is the only thing telling a crawler the page is not real. Same
-    // rule the static-file host follows; see scripts/lib/static-server.mjs.
-    const fallback = existsSync(join(dist, '404.html')) ? '404.html' : 'index.html';
-    const html = await readFile(join(dist, fallback), 'utf8');
-    return c.html(html, 404);
+    // Otherwise the single-page app answers, and the status depends on whether this build was
+    // prerendered.
+    //
+    // A prerendered build has a real file for every route it knows, so anything still unmatched
+    // really is unknown and deserves a 404 — that status is the only thing telling a crawler the
+    // page is not real. A plain `npm run build` has one file for the whole app, so the server
+    // cannot tell /app from /aqq and answering 404 would mark every genuine route as missing.
+    // Presence of 404.html is what distinguishes them, because only the prerenderer writes it.
+    const prerendered = existsSync(join(dist, '404.html'));
+    const html = await readFile(join(dist, prerendered ? '404.html' : 'index.html'), 'utf8');
+    return c.html(html, prerendered ? 404 : 200);
   });
 }
 

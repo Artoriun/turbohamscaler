@@ -28,7 +28,8 @@
     "check:tenancy": "node scripts/check-tenancy.mjs",
     "check:lighthouse": "node scripts/check-lighthouse.mjs",
     "prerender": "npm run build --workspace=@hamscaler/web && node scripts/prerender.mjs",
-    "test:api:worker": "node scripts/test-worker.mjs"
+    "test:api:worker": "node scripts/test-worker.mjs",
+    "check:deploy": "node scripts/check-deploy.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

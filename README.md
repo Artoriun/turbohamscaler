@@ -82,6 +82,7 @@ npm run test:api:worker # the same API tests, against a local Worker + D1
 npm run test:e2e       # Playwright, against the dev server
 npm run test:e2e:dist  # the same, against the built output
 npm run check:tenancy  # structural guards on tenant isolation
+npm run check:deploy   # build and boot render.yaml's commands, then sign in
 npm run db:migrate     # apply pending migrations
 npm run db:reset       # delete the local database and reseed
 ```
