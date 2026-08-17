@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createApp } from './app.ts';
+import { sweepExpired } from './auth.ts';
 import { migrate } from './db/migrate.ts';
 import { seed } from './db/seed.ts';
 
@@ -37,6 +38,12 @@ const WEB_DIST = [join(HERE, '../../web/dist'), join(HERE, '../../../web/dist')]
 );
 
 await migrate();
+
+// Expired sessions and stale sign-in attempts, cleared on the way up. See sweepExpired.
+const swept = await sweepExpired();
+if (swept.sessions || swept.attempts) {
+  console.log(`  swept ${swept.sessions} expired session(s), ${swept.attempts} sign-in attempt(s)`);
+}
 
 /**
  * Seeds an empty database when asked.
