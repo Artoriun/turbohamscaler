@@ -17,7 +17,7 @@
  * thing it is checking.
  */
 import { execSync, spawn } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -65,14 +65,21 @@ const buildLog = join(dir, 'build.log');
 
 const run = (cmd, opts = {}) => {
   try {
-    execSync(`${cmd} > ${buildLog} 2>&1 < /dev/null`, {
+    // Braces around the whole command: `a && b > log` redirects only b, so when an earlier
+    // step in the chain failed the log was never created and this reported ENOENT on the log
+    // file instead of the actual failure.
+    execSync(`{ ${cmd} ; } > ${buildLog} 2>&1 < /dev/null`, {
       cwd: dir,
       stdio: 'ignore',
       timeout: BUILD_TIMEOUT_MS,
       env: { ...process.env, ...opts.env },
     });
   } catch (err) {
-    const tail = readFileSync(buildLog, 'utf8').split('\n').slice(-40).join('\n');
+    // The log may not exist if the shell itself could not start; say so rather than throwing a
+    // second, less informative error on top of the first.
+    const tail = existsSync(buildLog)
+      ? readFileSync(buildLog, 'utf8').split('\n').slice(-40).join('\n')
+      : '(the command produced no log at all)';
     const why =
       err.signal === 'SIGTERM' ? `timed out after ${BUILD_TIMEOUT_MS / 60_000}m` : 'failed';
     throw new Error(`${cmd}\n  ${why}. Last of its output:\n\n${tail}`);
