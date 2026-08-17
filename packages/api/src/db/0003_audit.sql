@@ -8,8 +8,6 @@
 -- kept as an id *and* as the name and address they had at the time, because the point of a
 -- record is to still make sense after the account it refers to is gone.
 
-PRAGMA foreign_keys = ON;
-
 CREATE TABLE IF NOT EXISTS audit_events (
   id           TEXT PRIMARY KEY,
   org_id       TEXT NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
@@ -23,7 +21,7 @@ CREATE TABLE IF NOT EXISTS audit_events (
   -- longer exist: an address for an invitation, a name for a member.
   subject      TEXT NOT NULL DEFAULT '',
   detail       TEXT NOT NULL DEFAULT '',
-  created_at   INTEGER NOT NULL
+  created_at   BIGINT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS audit_by_org ON audit_events (org_id, created_at DESC);

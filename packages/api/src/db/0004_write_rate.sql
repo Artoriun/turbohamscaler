@@ -9,12 +9,10 @@
 -- host restarts often, and a Worker isolate holds no state between requests at all, so an
 -- in-process counter is reset by the platform far more often than by the clock.
 
-PRAGMA foreign_keys = ON;
-
 CREATE TABLE IF NOT EXISTS write_rate (
   -- Cascades with the session, so signing out or expiring cleans the row up and there is no
   -- separate sweep to forget to write.
   session_id   TEXT PRIMARY KEY REFERENCES sessions(id) ON DELETE CASCADE,
-  window_start INTEGER NOT NULL,
+  window_start BIGINT NOT NULL,
   writes       INTEGER NOT NULL DEFAULT 0
 );

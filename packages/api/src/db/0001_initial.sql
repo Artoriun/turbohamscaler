@@ -1,14 +1,20 @@
 -- Schema, applied by migrate.ts in filename order.
 --
 -- SQLite because it needs no account, no daemon and no container to run: `npm install && npm
--- run dev` gives a working database. The column types and constraints are deliberately plain
--- so the same DDL ports to D1 (SQLite over HTTP) or, with minor type edits, to Postgres.
+-- run dev` gives a working database. This DDL is dialect-neutral on purpose and runs unchanged
+-- on SQLite, D1 and Postgres — which is checked, not asserted: the same API suite runs against
+-- all three.
+--
+-- Two things that neutrality costs, both worth knowing before adding a column:
+--   BIGINT, not INTEGER, for anything holding Date.now(). Postgres's INTEGER is 32 bits and a
+--   millisecond timestamp overflows it in 1970 + 24 days. SQLite reads BIGINT as INTEGER
+--   affinity, so it changes nothing there.
+--   No PRAGMA. It is SQLite-only syntax and Postgres rejects the statement. Foreign keys are
+--   turned on where the connection is made (db/index.ts); D1 has them on already.
 --
 -- Every tenant-owned table carries org_id as the FIRST column of its primary lookup index.
 -- That is what makes a missing tenant filter a slow query rather than a silent data leak, and
 -- what the isolation tests assert.
-
-PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS users (
   id          TEXT PRIMARY KEY,
@@ -18,21 +24,21 @@ CREATE TABLE IF NOT EXISTS users (
   email_key   TEXT NOT NULL UNIQUE,
   name        TEXT NOT NULL,
   password    TEXT NOT NULL,
-  created_at  INTEGER NOT NULL
+  created_at  BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS organisations (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
   slug        TEXT NOT NULL UNIQUE,
-  created_at  INTEGER NOT NULL
+  created_at  BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS memberships (
   org_id      TEXT NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
   user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role        TEXT NOT NULL,
-  created_at  INTEGER NOT NULL,
+  created_at  BIGINT NOT NULL,
   PRIMARY KEY (org_id, user_id)
 );
 
@@ -41,8 +47,8 @@ CREATE INDEX IF NOT EXISTS memberships_by_user ON memberships (user_id);
 CREATE TABLE IF NOT EXISTS sessions (
   id          TEXT PRIMARY KEY,
   user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  expires_at  INTEGER NOT NULL,
-  created_at  INTEGER NOT NULL
+  expires_at  BIGINT NOT NULL,
+  created_at  BIGINT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS sessions_by_user ON sessions (user_id);
@@ -52,8 +58,8 @@ CREATE TABLE IF NOT EXISTS projects (
   org_id      TEXT NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
   name        TEXT NOT NULL,
   notes       TEXT NOT NULL DEFAULT '',
-  created_at  INTEGER NOT NULL,
-  updated_at  INTEGER NOT NULL
+  created_at  BIGINT NOT NULL,
+  updated_at  BIGINT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS projects_by_org ON projects (org_id, created_at);
@@ -63,6 +69,6 @@ CREATE INDEX IF NOT EXISTS projects_by_org ON projects (org_id, created_at);
 CREATE TABLE IF NOT EXISTS sign_in_attempts (
   email_key   TEXT PRIMARY KEY,
   failures    INTEGER NOT NULL DEFAULT 0,
-  first_at    INTEGER NOT NULL,
-  last_at     INTEGER NOT NULL
+  first_at    BIGINT NOT NULL,
+  last_at     BIGINT NOT NULL
 );

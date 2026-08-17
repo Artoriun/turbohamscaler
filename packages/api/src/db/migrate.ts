@@ -25,7 +25,7 @@ export async function migrate(log: (msg: string) => void = console.log): Promise
   await exec(`CREATE TABLE IF NOT EXISTS migrations (
     name       TEXT PRIMARY KEY,
     hash       TEXT NOT NULL,
-    applied_at INTEGER NOT NULL
+    applied_at BIGINT NOT NULL
   )`);
 
   const applied = new Map(
@@ -58,7 +58,10 @@ export async function migrate(log: (msg: string) => void = console.log): Promise
       throw new Error(
         `migration ${name} changed after it was applied (${seen} -> ${hash}). Add a new file ` +
           'instead: everyone else has already run the old contents, so editing it in place ' +
-          'leaves their database and yours permanently different.',
+          'leaves their database and yours permanently different.\n\n' +
+          'If you have just pulled a change to the schema while this starter is still pre-1.0 — ' +
+          'the README says the schema moves breakingly until then — this is that, and the fix ' +
+          'is `npm run db:reset` to rebuild your local database from scratch.',
       );
     }
 
