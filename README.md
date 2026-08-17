@@ -17,13 +17,25 @@ this is the bit nobody enjoys writing twice.
 > because it is finished. The schema, the API and the layout of the packages will all change,
 > breakingly and without a migration path. Treat nothing here as settled.
 
-**Live demo:** https://turbohamscaler-demo.onrender.com — sign in as `turboham@example.com`
-with `hamster-wheel-9000`. A scheduled ping keeps it awake — the free plan sleeps after fifteen
-idle minutes, and a cold start is a black holding page from the host rather than this app. The
-database starts fresh from the seed on every restart, so break whatever you like.
+## Try it — https://turbohamscaler-demo.onrender.com
 
-**Public pages only:** https://artoriun.github.io/turbohamscaler/ — the same marketing pages
-as static files, with no server behind them.
+The whole app, signed in. Two accounts are seeded, and they are in **separate organisations on
+purpose**: sign in as one and the other's projects, members and audit log are simply not there.
+That is the thing this starter is about, and it is a sign-in away rather than a code review.
+
+| Sign in as | Password | What you land in |
+| --- | --- | --- |
+| `turboham@example.com` | `hamster-wheel-9000` | TurboHam & Co Wheelwrights, as its owner |
+| `teemo@example.com` | `hamster-wheel-9000` | Teemo Industries, as its owner |
+
+Break whatever you like: the database is rebuilt from the seed on every restart. A scheduled
+ping keeps the instance awake, because the free plan sleeps after fifteen idle minutes and a
+cold start shows the host's holding page rather than this app.
+
+> The GitHub Pages copy — https://artoriun.github.io/turbohamscaler/ — is the public marketing
+> pages as static files, with **no server behind them**. There is nothing to sign in to there;
+> `/app` says so rather than offering a form that cannot work. Use the Render link above for
+> anything you actually want to try.
 
 <br clear="right">
 
