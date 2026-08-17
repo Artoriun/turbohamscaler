@@ -16,7 +16,7 @@
  *        npm run ci -- --list  show what would run
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -132,6 +132,25 @@ if (process.argv.includes('--list')) {
     console.log(`${skipReason(s.run) ? 'skip' : 'run '}  ${s.name.padEnd(38)} ${s.run}`);
   }
   process.exit(0);
+}
+
+/**
+ * Make sure a browser is there before spending three minutes finding out it is not.
+ *
+ * CI installs one explicitly; a fresh clone has none, and the first thing this script does for
+ * a new contributor was run seventeen tests that all failed with a launch error. The hint to
+ * run `playwright install` was inside each one, so the fix was findable — after reading past a
+ * wall of red that looked like the project was broken.
+ */
+try {
+  const { chromium } = await import('@playwright/test');
+  if (!existsSync(chromium.executablePath())) {
+    console.log('  Playwright has no browser installed yet. Fetching Chromium once…\n');
+    execFileSync('npx', ['playwright', 'install', 'chromium'], { cwd: ROOT, stdio: 'inherit' });
+    console.log('');
+  }
+} catch {
+  // Not fatal: if this cannot be worked out, the e2e step will say so in its own words.
 }
 
 let failed = null;

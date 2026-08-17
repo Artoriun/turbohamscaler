@@ -84,7 +84,13 @@ try {
 
     await runLighthouse(
       [
-        'lighthouse',
+        // Fetched on demand rather than installed. Lighthouse is only ever run as a subprocess
+        // — nothing here imports it — and as a devDependency it brought in puppeteer and an
+        // OpenTelemetry tree that put 20 advisories in front of anybody who had just cloned
+        // this and typed `npm install`. None of them were reachable from the app; all of them
+        // were the first thing a new reader saw. Pinned, so the gate is still reproducible.
+        '-y',
+        'lighthouse@12.8.2',
         url,
         '--only-categories=performance,accessibility,best-practices,seo',
         '--form-factor=mobile',
