@@ -365,6 +365,26 @@ button.link {
   font-size: 0.95rem;
 }
 
+/* Three controls in the narrow column of a two-column layout, which a plain flex row simply
+   squeezed: the address field came out at 72px against a placeholder needing 121px, so it read
+   "Address t…", and the role select cut "member" to "membe". Wrapping is the fix rather than
+   shrinking anything further — on a wide panel the row still fits on one line, and on a narrow
+   one the field takes its own line at a width it can be typed into. */
+.invites .row {
+  flex-wrap: wrap;
+}
+
+.invites .row input {
+  /* Wide enough for the placeholder it carries, and free to grow past it. */
+  flex: 1 1 18ch;
+  min-width: 18ch;
+}
+
+.invites .row select,
+.invites .row button {
+  flex: 0 0 auto;
+}
+
 /* The token is shown once and has to be copied, so it gets room to be selected rather than
    being truncated into something you cannot read back. */
 .invite-token {

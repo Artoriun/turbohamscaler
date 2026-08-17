@@ -38,6 +38,25 @@ export type AppContext = Context<AuthVariables>;
 /** Methods that only read. Everything else counts against the session's write allowance. */
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
+/**
+ * Writes that end a session, which the allowance must never stand in the way of.
+ *
+ * A throttled session could not sign out: sign-out is a POST, every POST was charged, and a
+ * client that had spent its minute got a 429 from the one control that stops it spending
+ * anything more. `sign-out-everywhere` was caught by the same rule, which is worse — that is
+ * the route you reach for when a session has been stolen, and it was unreachable for the
+ * exact minute the theft was busiest.
+ *
+ * Exempting them costs nothing the limit was protecting. Each one deletes rows rather than
+ * adding them, and the session doing it stops existing, so it cannot be used to get around the
+ * allowance: spend it, sign out, and the allowance is gone with the session.
+ */
+const ALWAYS_ALLOWED = new Set([
+  '/api/auth/sign-out',
+  '/api/auth/sign-out-everywhere',
+  '/api/me/sessions/:handle/revoke',
+]);
+
 /** A single route parameter, or undefined when it is absent or empty. */
 export function param(c: AppContext, name: string): string | undefined {
   const value = c.req.param(name);
@@ -59,7 +78,9 @@ export const requireUser: MiddlewareHandler<AuthVariables> = async (c, next) => 
   // Throttle writes, not reads. A read is cheap and a page can legitimately make several at
   // once; a write is what fills a small database up. Checked here rather than per route so a
   // route added later is covered without anyone remembering to cover it.
-  if (!SAFE_METHODS.has(c.req.method)) {
+  // routePath is the pattern that matched, not the URL, so the exemption is a list of routes
+  // rather than a prefix test that a path like /api/auth/sign-out-of-something would satisfy.
+  if (!SAFE_METHODS.has(c.req.method) && !ALWAYS_ALLOWED.has(c.req.routePath)) {
     const allowance = await recordWrite(session.id);
     if (!allowance.allowed) {
       return c.json({ error: 'too-many-writes', retryAfterMs: allowance.retryAfterMs }, 429);
