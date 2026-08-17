@@ -77,8 +77,13 @@ try {
   run(buildCommand, { env: { NODE_ENV: 'production' } });
 
   console.log(`  ${startCommand}`);
+  // Its own process group, so the whole thing can be signalled at the end. `sh -c` may or may
+  // not exec into the server depending on the shell, and where it does not, killing the child
+  // leaves the real server running with its output pipe open — which keeps this process alive
+  // long after it has printed its result.
   server = spawn('sh', ['-c', startCommand], {
     cwd: dir,
+    detached: true,
     stdio: ['ignore', 'pipe', 'pipe'],
     env: {
       ...process.env,
@@ -131,6 +136,15 @@ try {
   console.error(`✗ ${err.message}`);
   process.exitCode = 1;
 } finally {
-  server?.kill('SIGTERM');
+  if (server?.pid) {
+    try {
+      process.kill(-server.pid, 'SIGTERM');
+    } catch {
+      // Already gone, which is the outcome this was after anyway.
+    }
+  }
   rmSync(dir, { recursive: true, force: true });
+  // The result is printed and the work is done; exiting says so rather than waiting on whatever
+  // the build or the server left holding the event loop open.
+  process.exit(process.exitCode ?? 0);
 }
