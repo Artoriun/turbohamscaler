@@ -35,8 +35,34 @@ const dir = mkdtempSync(join(tmpdir(), 'deploy-check-'));
 const db = join(dir, 'check.db');
 let server;
 
-const run = (cmd, opts = {}) =>
-  execSync(cmd, { cwd: dir, stdio: 'pipe', env: { ...process.env, ...opts.env } });
+/**
+ * Runs a build command, with output to a file rather than a pipe, and a ceiling on how long it
+ * may take.
+ *
+ * Not `stdio: 'pipe'`: turbo leaves a daemon behind, and a daemon that inherits the pipe holds
+ * it open after the build itself has exited — so the parent waits for end-of-file that never
+ * comes and the whole thing hangs rather than failing. Writing to a file means nothing is
+ * waiting on a reader. The timeout is the backstop for every other way a build can wedge; a
+ * check that hangs is worse than one that fails, because it burns a runner and reports nothing.
+ */
+const BUILD_TIMEOUT_MS = 10 * 60_000;
+const buildLog = join(dir, 'build.log');
+
+const run = (cmd, opts = {}) => {
+  try {
+    execSync(`${cmd} > ${buildLog} 2>&1 < /dev/null`, {
+      cwd: dir,
+      stdio: 'ignore',
+      timeout: BUILD_TIMEOUT_MS,
+      env: { ...process.env, ...opts.env },
+    });
+  } catch (err) {
+    const tail = readFileSync(buildLog, 'utf8').split('\n').slice(-40).join('\n');
+    const why =
+      err.signal === 'SIGTERM' ? `timed out after ${BUILD_TIMEOUT_MS / 60_000}m` : 'failed';
+    throw new Error(`${cmd}\n  ${why}. Last of its output:\n\n${tail}`);
+  }
+};
 
 try {
   console.log('  exporting the tracked files as they stand…');
