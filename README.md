@@ -22,6 +22,23 @@ so run it locally to sign in.
 
 <br clear="right">
 
+## What it looks like
+
+The signed-in app: per-tenant projects, members and roles, invitations, organisation and account
+settings, and an audit log of who did what.
+
+![The portal, showing projects, members, invitations, organisation and account settings, and an activity log](docs/screenshot-portal.png)
+
+The public pages in front of it, prerendered and static — this is the half the GitHub Pages demo
+serves.
+
+![The public landing page, with the evolving mascot and six feature cards](docs/screenshot-public.png)
+
+Light and dark are both first-class; the theme is chosen before first paint, so it never flashes.
+
+![The same portal in dark mode](docs/screenshot-portal-dark.png)
+
+
 > Building a portfolio or marketing site instead? That is
 > [TurboHamstarter](https://github.com/Artoriun/turbohamstarter).
 
