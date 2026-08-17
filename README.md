@@ -11,11 +11,11 @@ this is the bit nobody enjoys writing twice.
 
 [![CI](https://github.com/Artoriun/turbohamscaler/actions/workflows/ci.yml/badge.svg)](https://github.com/Artoriun/turbohamscaler/actions/workflows/ci.yml)
 
-> ## 🚧 Work in progress — do not build on this yet
->
-> This starter is under active development. It is public so the work can be followed, not
-> because it is finished. The schema, the API and the layout of the packages will all change,
-> breakingly and without a migration path. Treat nothing here as settled.
+> **Pre-1.0 — a reference implementation, not a dependency.** Everything here works and is
+> checked on every commit; what is not settled is the shape. The schema, the API and the layout
+> of the packages still change breakingly, and there are no migrations between versions until
+> 1.0. Read it, clone it, take pieces of it — just do not point a product at it and expect
+> `git pull` to be painless.
 
 ## Try it — https://turbohamscaler-demo.onrender.com
 
@@ -38,6 +38,24 @@ cold start shows the host's holding page rather than this app.
 > anything you actually want to try.
 
 <br clear="right">
+
+## Where to look first
+
+Six files, in the order they are worth opening — whether you are deciding what to borrow or
+deciding whether the rest is worth reading. Each is a decision with a reason attached, and the
+reasons live in the code rather than here.
+
+| File | The decision |
+| --- | --- |
+| [`packages/api/src/repo.ts`](packages/api/src/repo.ts) | Every tenant-owned query lives here and takes `orgId` first. Routes never write SQL, so the number of places a tenant filter can be forgotten is one file rather than the whole codebase. |
+| [`scripts/check-tenancy.mjs`](scripts/check-tenancy.mjs) | That rule is a build failure, not a convention: this fails CI if a query touches a tenant table without filtering on `org_id`, or if SQL appears outside the repository layer. |
+| [`packages/api/src/isolation.test.ts`](packages/api/src/isolation.test.ts) | The same rule from the attacker's side — a real signed-in user of one organisation, holding a valid session, asking for another's rows by id. Non-members get 404, never 403, because 403 confirms the organisation exists. |
+| [`packages/api/src/db/postgres.ts`](packages/api/src/db/postgres.ts) | The third `Driver`. Two SQLite-family drivers agreeing proved nothing — they share a dialect — so the same 146 assertions run against Postgres, which has a different wire protocol, different placeholders and an `INTEGER` a timestamp overflows. |
+| [`scripts/check-deploy.mjs`](scripts/check-deploy.mjs) | Runs the deploy blueprint's own commands against a clean checkout and then **signs in**. It probes sign-in rather than `/health` because this path broke twice — once with no migrations in the build, once with no build tools — and `/health` answered 200 throughout both. |
+| [`packages/api/src/password.ts`](packages/api/src/password.ts) | PBKDF2 via Web Crypto, 600,000 iterations, with the scheme and cost stored in the hash so they can be raised later. An unknown scheme fails closed. Web Crypto rather than `node:crypto` is also what lets the same code run on Workers. |
+
+The comments throughout explain **why**, not what, and several of them name the specific bug that
+put them there. `npm run ci` runs the fourteen checks CI runs, in CI's order.
 
 ## What it looks like
 
