@@ -61,6 +61,7 @@ jobs:
       # deploy path has broken twice in ways nothing else could see — missing migrations, and a
       # production install with no build tools — and both answered /health throughout.
       - name: The deploy blueprint actually works
+        timeout-minutes: 12
         run: npm run check:deploy
 
       # The same assertions against the Worker and a local D1, so "runs on both runtimes" is
