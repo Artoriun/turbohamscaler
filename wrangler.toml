@@ -32,5 +32,12 @@ database_id = "REPLACE_ME"
 #   npx wrangler d1 migrations apply hamscaler --remote
 migrations_dir = "packages/api/src/db"
 
+# The expiry sweep. index.ts runs it at start-up, which a Worker does not have: an isolate is
+# made and discarded around single requests, so without a schedule the Workers deployment is the
+# one where expired sessions and stale sign-in attempts pile up forever. Nightly is plenty —
+# nothing depends on the timing, only on it happening.
+[triggers]
+crons = ["0 3 * * *"]
+
 [vars]
 NODE_ENV = "production"

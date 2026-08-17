@@ -15,6 +15,7 @@
  */
 
 import { createApp } from './app.ts';
+import { sweepExpired } from './auth.ts';
 import { type D1Like, d1Driver } from './db/d1.ts';
 import { setDriver } from './db/index.ts';
 
@@ -32,5 +33,19 @@ export default {
     // request against the same binding.
     setDriver(d1Driver(env.DB));
     return app.fetch(request, env, ctx as never);
+  },
+
+  /**
+   * The expiry sweep, on the schedule in wrangler.toml.
+   *
+   * index.ts does this at start-up, which suits a process that restarts. A Worker has no
+   * start-up to hang it on — an isolate is created and discarded around single requests — so
+   * without this the Workers deployment was the one where expired sessions and stale sign-in
+   * attempts accumulated forever. Same function, different trigger.
+   */
+  async scheduled(_event: unknown, env: Env, _ctx: unknown): Promise<void> {
+    setDriver(d1Driver(env.DB));
+    const swept = await sweepExpired();
+    console.log(`swept ${swept.sessions} session(s), ${swept.attempts} sign-in attempt(s)`);
   },
 };
