@@ -13,6 +13,7 @@
  * arrangement that works, and it is the cheapest as well as the simplest.
  */
 
+import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -59,6 +60,47 @@ const app = createApp();
 
 if (WEB_DIST) {
   const dist = WEB_DIST;
+
+  /**
+   * A content security policy, with the theme script allowed by its hash rather than by
+   * `unsafe-inline`.
+   *
+   * index.html runs one inline script before first paint, so that an explicit dark-mode choice
+   * never flashes the wrong theme. That single script is the only reason a policy here would
+   * otherwise need `unsafe-inline` — which allows every inline script, including one an
+   * injection put there, and is most of what a policy is for. Hashing what is actually in the
+   * file keeps the policy strict and keeps it correct when the script changes: it is read from
+   * the build rather than pinned in a constant that would quietly stop matching.
+   *
+   * `img-src data:` because the reduced-motion stills are inlined by the bundler when small
+   * enough. No `connect-src` beyond self: the app talks to its own origin and nothing else,
+   * which is the same reason the session cookie can be SameSite=Lax.
+   */
+  const shell = await readFile(join(dist, 'index.html'), 'utf8');
+  const inlineHashes = [...shell.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(
+    (m) => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`,
+  );
+  const CSP = [
+    "default-src 'self'",
+    `script-src 'self' ${inlineHashes.join(' ')}`.trim(),
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "object-src 'none'",
+  ].join('; ');
+
+  app.use('/*', async (c, next) => {
+    await next();
+    // Documents only. Sending it with a stylesheet or a font costs bytes on every asset and
+    // governs nothing — the policy applies to the page that loaded them.
+    if ((c.res.headers.get('content-type') ?? '').includes('text/html')) {
+      c.res.headers.set('content-security-policy', CSP);
+    }
+  });
 
   /**
    * How long each kind of file may be reused.

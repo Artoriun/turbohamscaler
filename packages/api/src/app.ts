@@ -119,6 +119,32 @@ const slugify = (s: string) =>
 export function createApp(): Hono<AuthVariables> {
   const app = new Hono<AuthVariables>();
 
+  /**
+   * The headers a browser needs to be told, on every response.
+   *
+   * Here rather than in index.ts so both runtimes get them: a Worker deployment was serving
+   * none of these, and so was the Node one. Each is a specific thing a browser will otherwise
+   * do that this app never wants.
+   *
+   * `nosniff` stops a JSON error body being re-interpreted as HTML and run. `frame-ancestors`
+   * refuses to be embedded, which is what makes clickjacking a signed-in session impossible.
+   * The referrer policy keeps invitation tokens out of the Referer header when somebody
+   * follows a link off an /app?invite=… page — the one URL here that carries a credential.
+   * HSTS only over https, because sending it from a dev server on http pins localhost to
+   * https in the browser and is a genuinely unpleasant thing to undo.
+   */
+  app.use('*', async (c, next) => {
+    await next();
+    const headers = c.res.headers;
+    headers.set('x-content-type-options', 'nosniff');
+    headers.set('referrer-policy', 'strict-origin-when-cross-origin');
+    headers.set('x-frame-options', 'DENY');
+    headers.set('permissions-policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+    if (new URL(c.req.url).protocol === 'https:') {
+      headers.set('strict-transport-security', 'max-age=31536000; includeSubDomains');
+    }
+  });
+
   app.get('/health', async (c) => {
     return c.json({ ok: true });
   });

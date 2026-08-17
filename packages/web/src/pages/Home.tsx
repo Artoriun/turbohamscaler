@@ -56,6 +56,10 @@ export default function Home() {
           // without it the hero reflows around it once it arrives and the heading jumps.
           width={280}
           height={271}
+          // The largest thing painted, so it is what LCP is measured against. Images are
+          // fetched at low priority by default, which leaves the one being measured queued
+          // behind the stylesheet and the bundle.
+          fetchPriority="high"
           alt="TurboHam evolving: the pixel hamster in teal headphones flashes white and grows, twice, ending as a broad-shouldered ogre with a heavy brow and a smirk"
         />
       </section>

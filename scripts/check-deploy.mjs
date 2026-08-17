@@ -165,6 +165,18 @@ try {
     throw new Error(`an unknown path answered ${junk.status}; every URL cannot be a real page`);
   }
 
+  // The security headers, and specifically that the policy did not fall back to allowing every
+  // inline script. `unsafe-inline` is the easy way to make a CSP stop complaining and it gives
+  // up most of what the policy was for, so it is worth failing on rather than discovering in a
+  // scanner months later.
+  const csp = page.headers.get('content-security-policy') ?? '';
+  if (!csp.includes("script-src 'self' 'sha256-")) {
+    throw new Error(`the page's script-src is not hash-pinned: ${csp || '(no policy at all)'}`);
+  }
+  for (const header of ['x-content-type-options', 'referrer-policy', 'x-frame-options']) {
+    if (!page.headers.get(header)) throw new Error(`no ${header} on the page`);
+  }
+
   // The published URLs have to name this deployment. SITE_URL is what decides that, and left
   // unset it falls back to the repository's Pages host — which is how the demo came to serve a
   // sitemap listing a different site's URLs, and a social card pointing there too. Compared
