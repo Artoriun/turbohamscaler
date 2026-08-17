@@ -63,3 +63,9 @@ services:
       # Leave this unset anywhere real: it creates accounts nobody asked for.
       - key: DEMO_SEED
         value: 'true'
+      # The origin the prerenderer writes into sitemap.xml, robots.txt and the social tags.
+      # Unset, it falls back to this repository's GitHub Pages host — so the demo published a
+      # sitemap listing somebody else's URLs and a social card pointing at a different site.
+      # Change it with the service: it is the address these pages are actually served from.
+      - key: SITE_URL
+        value: https://turbohamscaler-demo.onrender.com

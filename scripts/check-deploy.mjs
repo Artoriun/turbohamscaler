@@ -25,6 +25,21 @@ const blueprint = readFileSync('render.yaml', 'utf8');
 const read = (key) => blueprint.match(new RegExp(`^\\s*${key}:\\s*(.+)$`, 'm'))?.[1]?.trim();
 const buildCommand = read('buildCommand');
 const startCommand = read('startCommand');
+
+/**
+ * The blueprint's own envVars, so the build here is the build the host runs.
+ *
+ * Picking a few by hand is how this missed SITE_URL: the deploy prerendered a sitemap and a
+ * social card naming a completely different site, and nothing here could see it because
+ * nothing here set the variable that decides. Read them all, and the check stays honest as
+ * the list grows.
+ */
+const BLUEPRINT_ENV = Object.fromEntries(
+  [...blueprint.matchAll(/^\s*-\s*key:\s*(\S+)\s*\n\s*value:\s*'?([^'\n]*)'?\s*$/gm)].map((m) => [
+    m[1],
+    m[2].trim(),
+  ]),
+);
 if (!buildCommand || !startCommand) {
   console.error('✗ could not read buildCommand/startCommand out of render.yaml');
   process.exit(1);
@@ -73,8 +88,9 @@ try {
   execSync(`git ls-files -z | tar --null -T - -cf - | tar -x -C ${dir}`, { stdio: 'pipe' });
 
   console.log(`  ${buildCommand}`);
-  // NODE_ENV set exactly as the blueprint sets it, because that is what broke it last time.
-  run(buildCommand, { env: { NODE_ENV: 'production' } });
+  // Exactly the environment the blueprint declares. NODE_ENV is what broke it once; SITE_URL
+  // is what the published URLs are built from.
+  run(buildCommand, { env: BLUEPRINT_ENV });
 
   console.log(`  ${startCommand}`);
   // Its own process group, so the whole thing can be signalled at the end. `sh -c` may or may
@@ -87,10 +103,11 @@ try {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: {
       ...process.env,
-      NODE_ENV: 'production',
+      ...BLUEPRINT_ENV,
+      // The two that have to differ locally: a port nothing else is on, and a database this
+      // script owns and deletes.
       PORT: String(PORT),
       DATABASE_URL: db,
-      DEMO_SEED: 'true',
     },
   });
   let log = '';
@@ -146,6 +163,48 @@ try {
   const junk = await fetch(`${base}/definitely-not-a-route`);
   if (junk.status !== 404) {
     throw new Error(`an unknown path answered ${junk.status}; every URL cannot be a real page`);
+  }
+
+  // The published URLs have to name this deployment. SITE_URL is what decides that, and left
+  // unset it falls back to the repository's Pages host — which is how the demo came to serve a
+  // sitemap listing a different site's URLs, and a social card pointing there too. Compared
+  // against the blueprint's own value rather than a literal, so this follows a rename.
+  const siteUrl = BLUEPRINT_ENV.SITE_URL;
+  // Its absence is the bug, not a reason to skip: unset, the prerenderer falls back to this
+  // repository's Pages host and the deploy publishes a sitemap and a social card naming a
+  // different site entirely. Skipping when it is missing checked everything except the case
+  // that actually happened.
+  if (!siteUrl) {
+    throw new Error(
+      'render.yaml declares no SITE_URL, so the published URLs will name the fallback host ' +
+        'rather than this deployment',
+    );
+  }
+  {
+    const host = new URL(siteUrl).host;
+    const robots = await (await fetch(`${base}/robots.txt`)).text();
+    // og:url and og:image only, not every link on the page — "Read the source" points at
+    // GitHub on purpose. These three are the ones that are supposed to name this deployment.
+    const claims = [
+      ['sitemap.xml', [...sitemapBody.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1])],
+      ['robots.txt', [...robots.matchAll(/Sitemap:\s*(\S+)/g)].map((m) => m[1])],
+      [
+        'the social tags',
+        [...shell.matchAll(/<meta property="og:(?:url|image)" content="([^"]+)"/g)].map(
+          (m) => m[1],
+        ),
+      ],
+    ];
+    for (const [what, urls] of claims) {
+      const foreign = urls.find((u) => {
+        try {
+          return new URL(u).host !== host;
+        } catch {
+          return true;
+        }
+      });
+      if (foreign) throw new Error(`${what} names ${foreign}, but this deployment is ${host}`);
+    }
   }
 
   // The one that matters. Both previous breakages passed everything above this line.
