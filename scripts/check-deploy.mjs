@@ -128,6 +128,26 @@ try {
     throw new Error(`the shell must be revalidated; cache-control: ${shellCache || '(none)'}`);
   }
 
+  // The deploy served a 1.4KB shell with no words in it for weeks, while the README described
+  // prerendered pages — true of the Pages build, false of the one it linked to. These three
+  // assertions are the difference, and each one was a real symptom of the same missing step.
+  if (!/<h1[^>]*>/.test(shell)) {
+    throw new Error('GET / has no heading in the markup — this build was not prerendered');
+  }
+
+  const sitemap = await fetch(`${base}/sitemap.xml`);
+  const sitemapBody = await sitemap.text();
+  if (!sitemapBody.startsWith('<?xml') && !sitemapBody.includes('<urlset')) {
+    // It used to answer 200 with the app shell, because no sitemap existed and the catch-all
+    // served HTML. A crawler following robots.txt got a web page where a list of URLs belonged.
+    throw new Error(`/sitemap.xml is not a sitemap: ${sitemapBody.slice(0, 60)}…`);
+  }
+
+  const junk = await fetch(`${base}/definitely-not-a-route`);
+  if (junk.status !== 404) {
+    throw new Error(`an unknown path answered ${junk.status}; every URL cannot be a real page`);
+  }
+
   // The one that matters. Both previous breakages passed everything above this line.
   const signIn = await fetch(`${base}/api/auth/sign-in`, {
     method: 'POST',

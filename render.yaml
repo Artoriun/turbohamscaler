@@ -32,7 +32,19 @@ services:
     # typescript and vite are all devDependencies — without it the build has no build tools and
     # fails before it starts. Render sets NODE_ENV for a Node service whether or not the block
     # below does, so this has to be explicit rather than achieved by leaving NODE_ENV unset.
-    buildCommand: npm ci --include=dev && npm run build
+    #
+    # `prerender` rather than `build`: it runs the build and then writes each public route out
+    # with its text already in the markup. Without it the deploy served a 1.4KB shell with no
+    # words in it, /sitemap.xml answered with that same shell because no sitemap had been
+    # generated, and every made-up URL returned 200 because a single-file build cannot tell a
+    # real route from a typo. The README claims prerendered pages; this is what makes that true
+    # of the deployment it links to, rather than only of the Pages build.
+    #
+    # It costs a Chromium download at build time, which is the price of rendering the pages with
+    # the same browser the tests use rather than maintaining a second way to produce HTML.
+    # `build` then `prerender`, both: prerender builds only the web workspace, so on its own it
+    # leaves the API with no dist and the start command with nothing to run.
+    buildCommand: npm ci --include=dev && npx playwright install chromium && npm run build && npm run prerender
     startCommand: node packages/api/dist/index.js
     # /health answers without touching the database, so a failing check means the process is
     # down rather than the schema being mid-migration.
