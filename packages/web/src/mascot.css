@@ -106,6 +106,15 @@ picture {
   display: contents;
 }
 
+/* …which promotes *both* of its children, and <source> is one of them. As a grid item it took
+   the hero's second column, pushed the image onto a row of its own underneath, and left the
+   right half of the hero empty — the taller the heading grew, the more obvious the hole. A
+   <source> never renders, so removing it from the box tree costs nothing: which file the
+   browser picks is decided from the media attribute before any of this. */
+picture > source {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mascot {
     animation: none;
