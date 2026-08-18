@@ -174,6 +174,32 @@ test('nothing in the signed-in header sits on top of anything else', async ({ pa
   // being tested here. Overlap and containment are the code's business; fitting is not.
 });
 
+test('the signed-in page never scrolls sideways, at any width', async ({ page }) => {
+  // The panels were 404px wide inside a 320px screen. Grid and flex items default to
+  // `min-width: auto` — "never shrink below your own content" — so a panel holding a row of
+  // controls pushed past its container rather than squeezing, and took the whole page with it.
+  //
+  // Swept rather than sampled at one width, because the two bugs this covers appeared at
+  // opposite ends: the panels overflowed on the narrowest screens, and a breakpoint bringing
+  // the role badge back created a *new* overflow at exactly 480px, which a test at 390 and
+  // 1280 would have sailed straight past.
+  await signUp(page, unique(), 'Bartholomew Wheelwright-Hamsworth the Third');
+
+  const offenders: string[] = [];
+  for (const width of [320, 360, 390, 412, 480, 520, 560, 768, 1024]) {
+    await page.setViewportSize({ width, height: 900 });
+    const over = await page.evaluate(() => {
+      const vw = window.innerWidth;
+      return [...document.querySelectorAll('body *')]
+        .filter((el) => el.getBoundingClientRect().right > vw + 1)
+        .map((el) => (el.className || el.tagName).toString().slice(0, 24));
+    });
+    if (over.length) offenders.push(`${width}px: ${over.slice(0, 3).join(', ')}`);
+  }
+
+  expect(offenders, `content runs past the right edge at ${offenders.join(' | ')}`).toEqual([]);
+});
+
 test('the header stays one row and the page never scrolls sideways', async ({ page }, testInfo) => {
   // Both faults were only visible on a phone: the header wrapped the call to action onto a
   // second row and doubled its own height, which is the first thing anyone sees.

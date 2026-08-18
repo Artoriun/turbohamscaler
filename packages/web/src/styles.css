@@ -131,6 +131,21 @@ body {
   }
 }
 
+/* Grid and flex items default to `min-width: auto`, which means "never shrink below your own
+   content" — so a panel holding a row of controls, or a row holding a button whose label does
+   not wrap, pushes past its container instead of squeezing. On a 320px screen that made the
+   panels 404px wide and scrolled the whole page sideways.
+
+   Set on the children of the three containers that hold everything: the two-column grid, each
+   panel, and each list row. Nothing here wants the auto behaviour — every one of these boxes
+   would rather be narrow than be wide and off-screen. */
+.columns > *,
+.panel > *,
+.list li,
+.list li > * {
+  min-width: 0;
+}
+
 .centre {
   min-height: 100dvh;
   display: grid;
@@ -275,6 +290,10 @@ button.link {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  /* A project row is a name and two buttons. The buttons carry words rather than icons, so they
+     do not wrap internally, and on a narrow screen there is no width at which all three fit on
+     one line — they go to a second line rather than off the side of the phone. */
+  flex-wrap: wrap;
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.6rem 0.75rem;
@@ -760,7 +779,11 @@ code {
   display: none;
 }
 
-@media (min-width: 30rem) {
+/* 35rem, not 30rem. The wordmark comes back at 30rem and the badge is the widest of what is
+   left, so bringing both back at the same width put the row at 546px inside a 480px screen —
+   a breakpoint that created the overflow it was meant to avoid. Measured rather than guessed:
+   546px is what this row needs with everything showing. */
+@media (min-width: 35rem) {
   .topbar .badge {
     display: inline;
   }
