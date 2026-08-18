@@ -26,7 +26,7 @@ export const en = {
     // Split so the accent span can wrap only the second half.
     headline: 'The boring half of a multi-tenant app,',
     headlineAccent: 'already done',
-    lede: 'TurboHamscaler gives you accounts, organisations, roles and per-tenant data — with the isolation checks that keep them honest. It scales the way the mascot does — same hamster, considerably larger. Clone it and start on the part that is actually yours.',
+    lede: 'TurboHamscaler gives you accounts, organisations, roles and per-tenant data — with the isolation checks that keep them honest. It scales the way TurboHam does — same hamster, considerably larger. Clone it and start on the part that is actually yours.',
     openDemo: 'Open the demo',
     readSource: 'Read the source',
     demoSignIn: 'Demo sign-in:',
