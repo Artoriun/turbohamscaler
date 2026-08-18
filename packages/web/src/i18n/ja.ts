@@ -16,10 +16,10 @@ export const ja: Dictionary = {
   },
 
   home: {
-    eyebrow: 'TurboRepo スターター・回し車つき',
+    eyebrow: 'TurboRepo スターター・育ちます',
     headline: 'マルチテナントアプリの退屈な部分は、',
     headlineAccent: 'すでに完成',
-    lede: 'TurboHamscaler には、アカウント・組織・ロール・テナントごとのデータが揃っています。しかもテナント分離を裏づけるチェック付きです。スケールのしかたは回し車を増やすこと。クローンして、あなた自身の仕事から始めてください。',
+    lede: 'TurboHamscaler には、アカウント・組織・ロール・テナントごとのデータが揃っています。しかもテナント分離を裏づけるチェック付きです。スケールのしかたはマスコットと同じ。同じハムスターが、かなり大きくなります。クローンして、あなた自身の仕事から始めてください。',
     openDemo: 'デモを開く',
     readSource: 'ソースを読む',
     demoSignIn: 'デモ用サインイン:',
@@ -59,7 +59,7 @@ export const ja: Dictionary = {
 
   notFound: {
     title: 'ここには何もありません',
-    body: 'TurboHam が回し車の裏まで探しましたが、そのページは存在しません。',
+    body: 'TurboHam が大きくなってサイト全体を見渡しましたが、そのページはありません。',
     back: '最初に戻る',
   },
 
@@ -80,6 +80,8 @@ export const ja: Dictionary = {
     weakPassword: 'パスワードは 10 文字以上にしてください。',
     emailTaken: 'そのメールアドレスは既に登録されています。',
     signOut: 'サインアウト',
+    showPassword: 'パスワードを表示',
+    hidePassword: 'パスワードを隠す',
   },
 
   portal: {
@@ -91,7 +93,7 @@ export const ja: Dictionary = {
     sessionSince: '{when} から',
     sessionRevoke: 'セッションを終了',
     sessionRevokeNamed: '{when} に開始したセッションを終了',
-    sessionsNone: '他のセッションはありません。ハムスター1匹、回し車1つ。',
+    sessionsNone: '他のセッションはありません。ハムスター 1 匹、画面 1 つ。',
     yourName: '名前',
     saveName: '名前を保存',
     currentPassword: '現在のパスワード',
@@ -128,8 +130,8 @@ export const ja: Dictionary = {
     newProject: 'かじるものを追加',
     newProjectLabel: '新しいプロジェクト名',
     add: '追加',
-    noProjects: 'プロジェクトはまだありません。回し車は自分では回りません。',
-    loading: '回し車、始動中…',
+    noProjects: 'プロジェクトはまだありません。ここでは何も、ひとりでには育ちません。',
+    loading: '準備中…',
     delete: '削除',
     deleteNamed: '{name} を削除',
     members: 'メンバー',
@@ -181,9 +183,9 @@ export const ja: Dictionary = {
     inviteBadAddress: 'メールアドレスと権限を入力してください。',
     rolesNote:
       'ロールによってできることが決まります。プロジェクトを削除できるのは管理者とオーナーだけです。',
-    noApiTitle: 'この回し車はどこにもつながっていません',
+    noApiTitle: 'このコピーの後ろには何もありません',
     noApiBody:
-      '公開ページは静的なのでどこにでも配置できます。一方アプリ側はアカウントとテナントごとのデータのためにサーバーが必要ですが、この配置にはサーバーがありません。TurboHam は走っていますが、回し車が装置につながっていません。',
+      '公開ページは静的なのでどこにでも配置できます。一方アプリ側はアカウントとテナントごとのデータのためにサーバーが必要ですが、この配置にはサーバーがありません。TurboHam はいますが、大きくなる先がありません。',
     noApiRun: '3 つのコマンドで、ハムスターごと動き出します:',
     backToOverview: '概要に戻る',
   },

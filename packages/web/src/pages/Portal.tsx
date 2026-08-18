@@ -564,26 +564,24 @@ function Account({ onChanged }: { onChanged: () => void }) {
             });
         }}
       >
-        <label className="grow">
-          {t.portal.currentPassword}
-          <input
-            type="password"
+        <div className="grow">
+          <PasswordField
+            id="current-password"
+            label={t.portal.currentPassword}
             value={current}
-            onChange={(e) => setCurrent(e.target.value)}
+            onChange={setCurrent}
             autoComplete="current-password"
-            required
           />
-        </label>
-        <label className="grow">
-          {t.portal.newPassword}
-          <input
-            type="password"
+        </div>
+        <div className="grow">
+          <PasswordField
+            id="new-password"
+            label={t.portal.newPassword}
             value={next}
-            onChange={(e) => setNext(e.target.value)}
+            onChange={setNext}
             autoComplete="new-password"
-            required
           />
-        </label>
+        </div>
         <button type="submit">{t.portal.changePassword}</button>
       </form>
 
@@ -799,6 +797,72 @@ function ProjectRow({
   );
 }
 
+/**
+ * A password field with a control to reveal what has been typed.
+ *
+ * The reveal button sits *outside* the label rather than inside it. A label wrapping its input
+ * also names it, so a button in there becomes part of the field's accessible name — a screen
+ * reader would announce "Password Show password", and the tests that find the field by its
+ * label would stop matching. Wrapping both in a positioned box and pointing the label at the
+ * input by id keeps the name exactly "Password".
+ *
+ * The button is not a submit: inside a form, a button without an explicit type is one, and
+ * revealing a password would post the form.
+ */
+function PasswordField({
+  id,
+  label,
+  value,
+  onChange,
+  autoComplete,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  autoComplete: string;
+}) {
+  const t = useT();
+  const [shown, setShown] = useState(false);
+
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <div className="password-field">
+        <input
+          id={id}
+          type={shown ? 'text' : 'password'}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          required
+        />
+        <button
+          type="button"
+          className="reveal"
+          onClick={() => setShown((on) => !on)}
+          // Names the field it belongs to, for two reasons. The account panel has two of these,
+          // and two buttons called "Show password" on one screen is the duplicate-accessible-name
+          // problem — a screen reader announces them identically. It also keeps `getByLabel` on
+          // the field itself unambiguous, since "Show password" contains "Password" and an
+          // inexact match would find both the input and this button.
+          aria-label={`${shown ? t.auth.hidePassword : t.auth.showPassword} — ${label}`}
+          aria-pressed={shown}
+        >
+          {/* aria-hidden: the button already has a name, and an unlabelled graphic inside a
+              labelled control is announced twice or not at all depending on the reader. */}
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12Z" />
+            <circle cx="12" cy="12" r="3.2" />
+            {/* The struck-through eye is the shown state: the icon says what pressing it does. */}
+            {shown ? <path d="M4 4 20 20" /> : null}
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function RoleBadge({ role }: { role: Role }) {
   return <span className={`badge badge-${role}`}>{role}</span>;
 }
@@ -859,16 +923,13 @@ function SignIn({ onDone }: { onDone: () => void }) {
             <input value={name} onChange={(e) => setName(e.target.value)} required />
           </label>
         ) : null}
-        <label>
-          {t.auth.password}
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
-            required
-          />
-        </label>
+        <PasswordField
+          id="auth-password"
+          label={t.auth.password}
+          value={password}
+          onChange={setPassword}
+          autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
+        />
         {error ? (
           <p className="error" role="alert">
             {error}

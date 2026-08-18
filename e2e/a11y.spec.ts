@@ -41,7 +41,7 @@ async function populatedPortal(page: Page) {
   await page.getByRole('button', { name: 'Create an account instead' }).click();
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Name').fill('Sweep subject');
-  await page.getByLabel('Password').fill(password);
+  await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
 

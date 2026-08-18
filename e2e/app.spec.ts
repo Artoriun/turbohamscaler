@@ -22,7 +22,7 @@ async function signUp(
   await page.getByRole('button', { name: 'Create an account instead' }).click();
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Name').fill(name);
-  await page.getByLabel('Password').fill(password);
+  await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Create account' }).click();
   await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
 }
@@ -83,7 +83,7 @@ test('wrong credentials are refused without saying which part was wrong', async 
   await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
 
   await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill('not-the-password');
+  await page.getByLabel('Password', { exact: true }).fill('not-the-password');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('alert')).toHaveText('Those details were not accepted.');
 
@@ -91,6 +91,35 @@ test('wrong credentials are refused without saying which part was wrong', async 
   await page.getByLabel('Email').fill('nobody@example.com');
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page.getByRole('alert')).toHaveText('Those details were not accepted.');
+});
+
+test('a password can be revealed, and revealing it does not submit the form', async ({ page }) => {
+  await page.goto('/app');
+  const field = page.getByLabel('Password', { exact: true });
+  await field.fill('correct-horse-battery');
+  await expect(field).toHaveAttribute('type', 'password');
+
+  // A button inside a form with no explicit type is a submit button, so this would have posted
+  // the form with whatever was in it — the reason the component sets type="button".
+  await page.getByRole('button', { name: /Show password/ }).click();
+  await expect(field).toHaveAttribute('type', 'text');
+  await expect(field).toHaveValue('correct-horse-battery');
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+
+  await page.getByRole('button', { name: /Hide password/ }).click();
+  await expect(field).toHaveAttribute('type', 'password');
+});
+
+test('the two password reveals in the account panel are told apart', async ({ page }) => {
+  // Two buttons called "Show password" on one screen sound identical to a screen reader, which
+  // is the same duplicate-name fault that "Save"/"Save name" and "Sign out"/"End session" were.
+  await signUp(page, unique());
+  const names = await page
+    .getByRole('button', { name: /Show password/ })
+    .evaluateAll((els) => els.map((el) => el.getAttribute('aria-label')));
+
+  expect(names.length).toBe(2);
+  expect(new Set(names).size, `both reveal buttons are called the same thing: ${names}`).toBe(2);
 });
 
 test('nothing in the signed-in header sits on top of anything else', async ({ page }, testInfo) => {
@@ -254,9 +283,7 @@ test('served without an API, the portal says so instead of offering a broken for
     }),
   );
   await page.goto('/app');
-  await expect(
-    page.getByRole('heading', { name: 'This wheel is not connected to anything' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Nothing behind this copy' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Sign in' })).toHaveCount(0);
 });
 
@@ -474,12 +501,12 @@ test('changing your password signs your other devices out', async ({ browser }) 
   const secondPage = await second.newPage();
   await secondPage.goto('/app');
   await secondPage.getByLabel('Email').fill(email);
-  await secondPage.getByLabel('Password').fill('correct-horse-battery');
+  await secondPage.getByLabel('Password', { exact: true }).fill('correct-horse-battery');
   await secondPage.getByRole('button', { name: 'Sign in' }).click();
   await expect(secondPage.getByRole('heading', { name: 'Projects' })).toBeVisible();
 
-  await firstPage.getByLabel('Current password').fill('correct-horse-battery');
-  await firstPage.getByLabel('New password').fill('a-brand-new-password');
+  await firstPage.getByLabel('Current password', { exact: true }).fill('correct-horse-battery');
+  await firstPage.getByLabel('New password', { exact: true }).fill('a-brand-new-password');
   await firstPage.getByRole('button', { name: 'Change password' }).click();
   await expect(firstPage.getByText('Password changed.')).toBeVisible();
 
@@ -522,7 +549,7 @@ test('your sessions are listed, and one can be signed out on its own', async ({ 
   const secondPage = await second.newPage();
   await secondPage.goto('/app');
   await secondPage.getByLabel('Email').fill(email);
-  await secondPage.getByLabel('Password').fill('correct-horse-battery');
+  await secondPage.getByLabel('Password', { exact: true }).fill('correct-horse-battery');
   await secondPage.getByRole('button', { name: 'Sign in' }).click();
   await expect(secondPage.getByRole('heading', { name: 'Projects' })).toBeVisible();
 

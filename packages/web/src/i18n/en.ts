@@ -20,11 +20,11 @@ export const en = {
   },
 
   home: {
-    eyebrow: 'TurboRepo starter · wheel included',
+    eyebrow: 'TurboRepo starter · grows on you',
     // Split so the accent span can wrap only the second half.
     headline: 'The boring half of a multi-tenant app,',
     headlineAccent: 'already done',
-    lede: 'TurboHamscaler gives you accounts, organisations, roles and per-tenant data — with the isolation checks that keep them honest. You scale by adding wheels. Clone it and start on the part that is actually yours.',
+    lede: 'TurboHamscaler gives you accounts, organisations, roles and per-tenant data — with the isolation checks that keep them honest. It scales the way the mascot does — same hamster, considerably larger. Clone it and start on the part that is actually yours.',
     openDemo: 'Open the demo',
     readSource: 'Read the source',
     demoSignIn: 'Demo sign-in:',
@@ -64,7 +64,7 @@ export const en = {
 
   notFound: {
     title: 'Nothing here',
-    body: 'TurboHam checked behind the wheel. That page does not exist.',
+    body: 'TurboHam grew tall enough to see the whole site from here. That page is not on it.',
     back: 'Back to the start',
   },
 
@@ -85,6 +85,8 @@ export const en = {
     weakPassword: 'Password must be at least 10 characters.',
     emailTaken: 'That address already has an account.',
     signOut: 'Sign out',
+    showPassword: 'Show password',
+    hidePassword: 'Hide password',
   },
 
   portal: {
@@ -96,7 +98,7 @@ export const en = {
     sessionSince: 'Since {when}',
     sessionRevoke: 'End session',
     sessionRevokeNamed: 'End the session started {when}',
-    sessionsNone: 'No other sessions. One hamster, one wheel.',
+    sessionsNone: 'No other sessions. One hamster, one screen.',
     yourName: 'Your name',
     saveName: 'Save name',
     currentPassword: 'Current password',
@@ -134,7 +136,7 @@ export const en = {
     newProject: 'Something to gnaw on',
     newProjectLabel: 'New project name',
     add: 'Add',
-    noProjects: 'No projects yet. The wheel is not going to turn itself.',
+    noProjects: 'No projects yet. Nothing here grows on its own.',
     loading: 'Spinning up…',
     delete: 'Delete',
     deleteNamed: 'Delete {name}',
@@ -186,9 +188,9 @@ export const en = {
     inviteTaken: 'That address already has an invitation to this organisation.',
     inviteBadAddress: 'Enter an email address and a role.',
     rolesNote: 'Roles decide what each person may do. Only an admin or owner can remove a project.',
-    noApiTitle: 'This wheel is not connected to anything',
+    noApiTitle: 'Nothing behind this copy',
     noApiBody:
-      'The public pages are static, so they deploy anywhere. The app itself needs a server for accounts and per-tenant data, and this copy has none — TurboHam is running, but the wheel is not attached to the machinery.',
+      'The public pages are static, so they deploy anywhere. The app itself needs a server for accounts and per-tenant data, and this copy has none — TurboHam is here, with nothing to grow into.',
     noApiRun: 'Three commands and it all works, hamsters included:',
     backToOverview: 'Back to the overview',
   },

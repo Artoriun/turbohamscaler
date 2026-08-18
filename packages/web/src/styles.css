@@ -174,7 +174,12 @@ body {
   margin: 0;
   font-size: 1.3rem;
 }
+/* The panel is a grid with `justify-items: start`, so its children size to their content unless
+   told otherwise. `.field` is here because the password field is a div wrapping a label and an
+   input — it is not a <label> itself, so it missed this rule and came out narrower than the
+   email box above it. */
 .panel.auth label,
+.panel.auth .field,
 .panel.auth button[type="submit"] {
   width: 100%;
 }
@@ -274,6 +279,62 @@ button.link {
 .grow {
   flex: 1;
   min-width: 0;
+}
+
+/* A label above its field rather than wrapping it. Wrapping also names the input, so a reveal
+   button inside the label would end up part of the field's own name. */
+.field {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.password-field {
+  position: relative;
+  display: flex;
+}
+
+/* Fills its row — `width: 100%` resolves against the flex container's content box, which is
+   not the same as taking the whole line, and the field came out narrower than the email box
+   above it. Padded on the right by the width of the button so a long password never runs
+   underneath it. */
+.password-field input {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Clear of the button, so a long password does not run underneath the icon. */
+  padding-right: 3rem;
+}
+
+.password-field .reveal {
+  position: absolute;
+  right: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--muted);
+  /* A 44px box around a 20px icon: the icon is the visual, the target is what a thumb has to
+     hit. Padding rather than width so the box grows with the icon if it ever changes. */
+  padding: 0.6rem;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+
+.password-field .reveal svg {
+  width: 20px;
+  height: 20px;
+  /* Stroked, not filled: a filled eye at this size turns into a blob. */
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.password-field .reveal:hover:not(:disabled) {
+  color: var(--fg);
+  filter: none;
 }
 
 /* ── lists ──────────────────────────────────────────────────────────────────────────── */
