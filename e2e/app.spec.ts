@@ -186,17 +186,23 @@ test('the signed-in page never scrolls sideways, at any width', async ({ page })
   await signUp(page, unique(), 'Bartholomew Wheelwright-Hamsworth the Third');
 
   const offenders: string[] = [];
-  for (const width of [320, 360, 390, 412, 480, 520, 560, 768, 1024]) {
-    await page.setViewportSize({ width, height: 900 });
-    const over = await page.evaluate(() => {
-      const vw = window.innerWidth;
-      return [...document.querySelectorAll('body *')]
-        .filter((el) => el.getBoundingClientRect().right > vw + 1)
-        .map((el) => (el.className || el.tagName).toString().slice(0, 24));
-    });
-    if (over.length) offenders.push(`${width}px: ${over.slice(0, 3).join(', ')}`);
+  // 16px is whatever this machine renders; 20px stands in for a platform whose fonts are wider.
+  // That difference is not hypothetical — an earlier version of this fix was tuned until it fit
+  // here and then overflowed at three widths on CI's Linux, so the width sweep alone was not
+  // enough to trust.
+  for (const fontSize of [16, 20]) {
+    await page.addStyleTag({ content: `body { font-size: ${fontSize}px }` });
+    for (const width of [320, 360, 390, 412, 480, 520, 560, 768, 1024]) {
+      await page.setViewportSize({ width, height: 900 });
+      const over = await page.evaluate(() => {
+        const vw = window.innerWidth;
+        return [...document.querySelectorAll('body *')]
+          .filter((el) => el.getBoundingClientRect().right > vw + 1)
+          .map((el) => (el.className || el.tagName).toString().slice(0, 24));
+      });
+      if (over.length) offenders.push(`${width}px@${fontSize}px: ${over.slice(0, 3).join(', ')}`);
+    }
   }
-
   expect(offenders, `content runs past the right edge at ${offenders.join(' | ')}`).toEqual([]);
 });
 

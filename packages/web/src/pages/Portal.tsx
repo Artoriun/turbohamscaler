@@ -130,7 +130,7 @@ export default function Portal() {
 
   return (
     <>
-      <header className="topbar">
+      <header className="topbar topbar-app">
         <div className="topbar-inner">
           <Link className="brand" to={home} aria-label={APP_NAME}>
             <Mascot art="mark" className="brand-mark" width={48} height={32} alt="" />

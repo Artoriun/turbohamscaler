@@ -761,14 +761,44 @@ code {
   text-overflow: ellipsis;
 }
 
-/* Below 22rem — an iPhone SE and anything narrower — the six controls in the signed-in header
-   do not fit at the ordinary spacing, and the page starts scrolling sideways. The 24px this
-   buys back comes out of padding and gaps rather than out of a control: every one of them is
-   either a label somebody has to read or the only way to reach something. */
-@media (max-width: 22rem) {
-  .topbar-inner {
-    padding-inline: 0.5rem;
-    gap: 0.375rem;
+/* The signed-in header carries six controls where the public one carries four, and on a narrow
+   screen they do not fit on one line. It is allowed a second one, and packed from the left —
+   the auto margin that pushes everything to the right edge on one row forces an early break and
+   leaves the second row half empty.
+
+   Written mobile-first, wrapping by default and pinned to one row once there is room, because
+   the pair of max-width/min-width queries this replaced both matched at exactly 560px and the
+   header wrapped at a width where it fits.
+
+   This started as tightened padding and moved breakpoints, tuned until it fit — on this machine.
+   CI runs Linux, where the same labels render wider, and it overflowed at three of the nine
+   widths tested. Whether six labelled controls fit a given width is a property of the font the
+   platform happens to pick, so no arrangement of breakpoints is right everywhere; wrapping is.
+   The public header keeps its one-row rule, which it can afford. */
+.topbar-app .topbar-inner {
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
+  column-gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.topbar-app .brand {
+  margin-right: 0;
+}
+
+@media (min-width: 35rem) {
+  .topbar-app .topbar-inner {
+    /* Spacing comes back, but not `nowrap`. Forcing one row above a breakpoint is the same bet
+       on font metrics as before, one width further along: at 560px with larger text it still
+       did not fit, and pinning it there produced an overflow instead of a second row. Left free
+       to wrap at every width, it stays on one row wherever there is room and takes another
+       wherever there is not — which is the behaviour that cannot be wrong. */
+    column-gap: 0.75rem;
+    padding: 0 1rem;
+  }
+
+  .topbar-app .brand {
+    margin-right: auto;
   }
 }
 
