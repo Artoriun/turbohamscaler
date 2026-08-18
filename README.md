@@ -6,57 +6,43 @@ A **TurboRepo** starter for a multi-tenant web app: accounts, organisations, rol
 per-tenant data, with the isolation checks that keep them honest.
 
 It runs on nothing. No account, no container, no native build — `npm install && npm run dev`
-gives you a working app with a seeded demo tenant. TurboHam scales by adding wheels; the rest of
-this is the bit nobody enjoys writing twice.
+gives you a working app with a seeded demo tenant.
 
 [![CI](https://github.com/Artoriun/turbohamscaler/actions/workflows/ci.yml/badge.svg)](https://github.com/Artoriun/turbohamscaler/actions/workflows/ci.yml)
 
-> **Pre-1.0 — a reference implementation, not a dependency.** Everything here works and is
-> checked on every commit; what is not settled is the shape. The schema, the API and the layout
-> of the packages still change breakingly, and there are no migrations between versions until
-> 1.0. Read it, clone it, take pieces of it — just do not point a product at it and expect
-> `git pull` to be painless.
+> **Pre-1.0 — a reference implementation, not a dependency.** The schema, the API and the layout
+> of the packages still change breakingly, with no migrations between versions until 1.0.
 
 ## Try it — https://turbohamscaler-demo.onrender.com
 
-The whole app, signed in. Two accounts are seeded, and they are in **separate organisations on
-purpose**: sign in as one and the other's projects, members and audit log are simply not there.
-That is the thing this starter is about, and it is a sign-in away rather than a code review.
+Two accounts, in **separate organisations on purpose**: sign in as one and the other's projects,
+members and audit log are simply not there.
 
 | Sign in as | Password | What you land in |
 | --- | --- | --- |
 | `turboham@example.com` | `hamster-wheel-9000` | TurboHam & Co Wheelwrights, as its owner |
 | `teemo@example.com` | `hamster-wheel-9000` | Teemo Industries, as its owner |
 
-Break whatever you like: the database is rebuilt from the seed on every restart. The free plan
-sleeps after about fifteen idle minutes, so the first request after a quiet spell waits on a
-cold start and shows the host's holding page rather than this app — see
-[keeping it awake](#keeping-a-free-instance-awake).
+Break whatever you like — the database is rebuilt from the seed on every restart.
 
 > The GitHub Pages copy — https://artoriun.github.io/turbohamscaler/ — is the public marketing
-> pages as static files, with **no server behind them**. There is nothing to sign in to there;
-> `/app` says so rather than offering a form that cannot work. Use the Render link above for
-> anything you actually want to try.
+> pages as static files, with **no server behind them**. `/app` there says so rather than
+> offering a sign-in form that cannot work.
 
 <br clear="right">
 
 ## Where to look first
 
-Six files, in the order they are worth opening — whether you are deciding what to borrow or
-deciding whether the rest is worth reading. Each is a decision with a reason attached, and the
-reasons live in the code rather than here.
-
 | File | The decision |
 | --- | --- |
-| [`packages/api/src/repo.ts`](packages/api/src/repo.ts) | Every tenant-owned query lives here and takes `orgId` first. Routes never write SQL, so the number of places a tenant filter can be forgotten is one file rather than the whole codebase. |
-| [`scripts/check-tenancy.mjs`](scripts/check-tenancy.mjs) | That rule is a build failure, not a convention: this fails CI if a query touches a tenant table without filtering on `org_id`, or if SQL appears outside the repository layer. |
-| [`packages/api/src/isolation.test.ts`](packages/api/src/isolation.test.ts) | The same rule from the attacker's side — a real signed-in user of one organisation, holding a valid session, asking for another's rows by id. Non-members get 404, never 403, because 403 confirms the organisation exists. |
-| [`packages/api/src/db/postgres.ts`](packages/api/src/db/postgres.ts) | The third `Driver`. Two SQLite-family drivers agreeing proved nothing — they share a dialect — so the same 146 assertions run against Postgres, which has a different wire protocol, different placeholders and an `INTEGER` a timestamp overflows. |
-| [`scripts/check-deploy.mjs`](scripts/check-deploy.mjs) | Runs the deploy blueprint's own commands against a clean checkout and then **signs in**. It probes sign-in rather than `/health` because this path broke twice — once with no migrations in the build, once with no build tools — and `/health` answered 200 throughout both. |
-| [`packages/api/src/password.ts`](packages/api/src/password.ts) | PBKDF2 via Web Crypto, 600,000 iterations, with the scheme and cost stored in the hash so they can be raised later. An unknown scheme fails closed. Web Crypto rather than `node:crypto` is also what lets the same code run on Workers. |
+| [`packages/api/src/repo.ts`](packages/api/src/repo.ts) | Every tenant-owned query lives here and takes `orgId` first. Routes never write SQL, so a tenant filter can only be forgotten in one file. |
+| [`scripts/check-tenancy.mjs`](scripts/check-tenancy.mjs) | That rule is a build failure, not a convention: CI fails if a query touches a tenant table without filtering on `org_id`, or if SQL appears outside the repository layer. |
+| [`packages/api/src/isolation.test.ts`](packages/api/src/isolation.test.ts) | The same rule from the attacker's side — a signed-in user of one organisation asking for another's rows by id. Non-members get 404, never 403, because 403 confirms the organisation exists. |
+| [`packages/api/src/db/postgres.ts`](packages/api/src/db/postgres.ts) | The third `Driver`, and the one that makes the interface mean something: a different wire protocol, different placeholders, and an `INTEGER` a millisecond timestamp overflows. |
+| [`scripts/check-deploy.mjs`](scripts/check-deploy.mjs) | Runs the deploy blueprint's own commands against a clean checkout and then **signs in** — a health check that never touches the database cannot tell you the deploy works. |
+| [`packages/api/src/password.ts`](packages/api/src/password.ts) | PBKDF2 via Web Crypto, 600,000 iterations, scheme and cost stored in the hash so they can be raised later. An unknown scheme fails closed. Web Crypto is also what lets the same code run on Workers. |
 
-The comments throughout explain **why**, not what, and several of them name the specific bug that
-put them there. `npm run ci` runs the fourteen checks CI runs, in CI's order.
+The comments explain **why**, not what. `npm run ci` runs the fourteen checks CI runs, in order.
 
 ## What it looks like
 
@@ -65,15 +51,13 @@ settings, and an audit log of who did what.
 
 ![The portal, showing projects, members, invitations, organisation and account settings, and an activity log](docs/screenshot-portal.png)
 
-The public pages in front of it, prerendered and static — this is the half the GitHub Pages demo
-serves.
+The prerendered public pages in front of it.
 
 ![The public landing page, with the evolving mascot and six feature cards](docs/screenshot-public.png)
 
 Light and dark are both first-class; the theme is chosen before first paint, so it never flashes.
 
 ![The same portal in dark mode](docs/screenshot-portal-dark.png)
-
 
 > Building a portfolio or marketing site instead? That is
 > [TurboHamstarter](https://github.com/Artoriun/turbohamstarter).
@@ -94,8 +78,7 @@ Three workspaces: `packages/web`, `packages/api`, `packages/shared`.
 
 ## Quick start
 
-**Use this template** to get your own repository, or clone it if you would rather keep the
-history. Then:
+**Use this template** for your own repository, or clone it to keep the history.
 
 ```bash
 npm install
@@ -103,184 +86,136 @@ npm run db:seed   # a demo tenant, so the app opens on something
 npm run dev       # web on 3410, API on 4410
 ```
 
-Node 22 or newer — `node:sqlite` is what makes the database work with no native build and no
-account, and it arrived in 22. The install refuses anything older rather than letting you find
-out at the first query.
-
-Sign in as `turboham@example.com` or `teemo@example.com`, password `hamster-wheel-9000`.
-The two accounts are in separate organisations on purpose: sign in as one and the other's data
-is simply not there — no filter, no flag, nothing to forget.
-
-No `.env` is needed to run it. For production see [`.env.example`](.env.example).
+Node 22 or newer (`.nvmrc`) — `node:sqlite` is what makes the database work with no native build,
+and the install refuses anything older. Sign in with either account from the table above. No
+`.env` is needed to run it; for production see [`.env.example`](.env.example).
 
 ### Scripts
 
 ```bash
-npm run build          # production build
-npm run prerender      # build, then write each public route out with its text in the markup
-npm run ci             # everything CI runs, in order
-npm run test           # API and unit tests
-npm run test:api:worker # the same API tests, against a local Worker + D1
-npm run test:api:postgres # the same API tests again, against real Postgres
-npm run test:e2e       # Playwright, against the dev server
-npm run test:e2e:dist  # the same, against the built output
-npm run check:tenancy  # structural guards on tenant isolation
-npm run check:deploy   # build and boot render.yaml's commands, then sign in
-npm run check:budgets  # bundle and image size ceilings
-npm run db:migrate     # apply pending migrations
-npm run db:reset       # delete the local database and reseed
+npm run build             # production build
+npm run prerender         # build, then write each public route out with its text in the markup
+npm run ci                # everything CI runs, in order
+npm run test              # API and unit tests
+npm run test:api:postgres # the same API tests against real Postgres
+npm run test:api:worker   # the same API tests against a local Worker + D1
+npm run test:e2e          # Playwright, against the dev server
+npm run test:e2e:dist     # the same, against the built output
+npm run check:tenancy     # structural guards on tenant isolation
+npm run check:deploy      # build and boot render.yaml's commands, then sign in
+npm run check:budgets     # bundle and image size ceilings
+npm run db:migrate        # apply pending migrations
+npm run db:reset          # delete the local database and reseed
 ```
 
 ---
 
 ## Features
 
-- **Accounts** — sign up, sign in, sign out, sign out everywhere; change your name, change
-  your password, close your account. Passwords are hashed with Web Crypto PBKDF2 and sessions
-  are opaque ids in a table, so revoking one actually revokes it — which is why changing a
-  password ends every other session, and why closing an account is refused while it is the
-  only owner of an organisation. Your live sessions
-  are listed and can be ended one at a time, named by a hash prefix rather than by the session
-  id — that id is the cookie, so a list of them would be a list of working keys
-- **Organisations** you can create, rename and delete, with `member` / `admin` / `owner` roles
-  and per-tenant projects. Roles can
-  be changed, members removed, and anyone can leave — except the last owner, because an
-  organisation with no owner is one nobody can administer their way out of
-- **Invitations** — an admin issues a single-use token addressed to a person, who accepts it
-  themselves. Only the token's hash is stored, and nothing is ever checked against the account
-  list, so inviting cannot be used to ask which addresses are registered. No mail provider ships,
-  by design: `packages/api/src/mailer.ts` is the seam, with a worked example in its comments and
-  a default that logs instead of sending. Until you install one the token is returned to the
-  admin to pass on by hand; install one and the API stops returning it
-- **Tenant isolation** enforced in one file and proven by a suite written from the attacker's
-  side — a valid session asking for another organisation's rows by id
-- **Migrations** applied in order and hashed, so editing one that has already run is an error
-  rather than a silent divergence
-- **An audit log** of every membership and invitation change, append-only, admin-only, and
-  keeping the actor's name as it was — a record whose subject has been deleted still reads
-- **Structured logs and an error seam** — one JSON line per request carrying a request id, the
-  organisation and the caller, because "one customer or everybody" is the first question any
-  multi-tenant incident asks and it cannot be answered afterwards if nothing recorded it. The id
-  goes back on the response, so a person reporting an error can be found in the log by it.
-  `packages/api/src/observability.ts` is the seam, with a worked Sentry example in its comments
-  and a default that writes to stderr and reaches nobody
-- **Rate-limited sign-in**, recorded in the database so a restart does not reset it
-- **Seeded demo data**, two organisations, no cloud account
-- **Light, dark or follow the system**, chosen before first paint so the theme never flashes
-- **Prerendered public pages** — each route is a real file with its text already in the HTML,
-  so a crawler that runs no JavaScript still sees the page. A URL that exists answers 200 and
-  one that does not answers 404, with a generated `sitemap.xml`, a `robots.txt` pointing at it,
-  and social tags carrying the origin they are deployed to. Both deploys are prerendered, not
-  just the static one
+- **Accounts** — sign up, sign in, sign out everywhere; change your name or password, close your
+  account. Sessions are opaque ids in a table, so revoking one really revokes it: changing a
+  password ends every other session, and closing an account is refused while it is an
+  organisation's only owner. Your devices are listed by a hash prefix, never by the session id —
+  that id is the cookie
+- **Organisations** with `member` / `admin` / `owner` roles and per-tenant projects. Anyone may
+  leave except the last owner, who would strand everybody else
+- **Invitations** — single-use, addressed to a person, stored only as a hash, and never checked
+  against the account list, so inviting cannot reveal which addresses are registered. No mail
+  provider ships: [`mailer.ts`](packages/api/src/mailer.ts) is the seam, with a worked example in
+  its comments. Without one the token comes back for the admin to pass on; with one it does not
+- **Tenant isolation** enforced in one file, guarded by a static check, and proven from the
+  attacker's side
+- **Migrations** applied in order and hashed, so editing an applied one is an error rather than a
+  silent divergence
+- **An audit log** of membership and invitation changes, append-only and admin-only, keeping the
+  actor's name as it was — a record whose subject is deleted still reads
+- **Structured logs** — one JSON line per request with a request id, the organisation and the
+  caller, because "one customer or everybody" is the first question any multi-tenant incident
+  asks. The id comes back on the response.
+  [`observability.ts`](packages/api/src/observability.ts) is the seam, with a worked Sentry
+  example and a default that reaches nobody
+- **Security headers on every response**, including a content security policy that hash-pins the
+  one inline script rather than allowing inline scripts generally
+- **Rate-limited sign-in and writes**, recorded in the database so a restart does not reset them
+- **Prerendered public pages** — every route is a real file with its text in the HTML, so a
+  crawler that runs no JavaScript still sees it. Real URLs answer 200 and unknown ones 404, with
+  a generated `sitemap.xml`, a `robots.txt` pointing at it, and social tags carrying the origin
+  they were built for
+- **Light, dark or follow the system**, chosen before first paint
 
 ---
 
 ## How tenancy works
 
-Every tenant-owned query lives in `packages/api/src/repo.ts` and takes `orgId` as its first
-argument. Routes never write SQL. That keeps the number of places a tenant filter can be
-forgotten at exactly one file.
+Every tenant-owned query lives in [`repo.ts`](packages/api/src/repo.ts) and takes `orgId` first.
+Routes never write SQL.
 
-Two checks back it up. `npm run check:tenancy` fails the build if a query touches a
-tenant-owned table without filtering on `org_id`, or if SQL appears outside the repository
-layer. `packages/api/src/isolation.test.ts` proves the behaviour end to end.
+`npm run check:tenancy` fails the build if a query touches a tenant-owned table without filtering
+on `org_id`, or if SQL appears outside the repository layer.
+[`isolation.test.ts`](packages/api/src/isolation.test.ts) proves the behaviour end to end.
 
-A non-member gets `404`, never `403`: a 403 confirms the organisation exists, which tells an
-attacker enumerating ids exactly which ones are real.
+A non-member gets `404`, never `403`: a 403 confirms the organisation exists, which tells anyone
+enumerating ids which ones are real.
 
----
+### Adding a route
 
-## Adding a route
-
-1. Add the handler in `packages/api/src/app.ts`.
+1. Add the handler in [`app.ts`](packages/api/src/app.ts).
 2. Add it to `ROUTE_MANIFEST` at the bottom of that file, with what it requires.
 3. Put any new query in `repo.ts`, taking `orgId` first.
 
 `authMatrix.test.ts` reads that manifest and checks every route against an anonymous caller, a
-non-member, and a member holding too low a role. A route with no manifest entry is not
-covered — which is why step 2 is not optional.
+non-member, and a member holding too low a role. A route missing from the manifest is untested,
+which is why step 2 is not optional.
 
 ---
 
 ## Testing
 
-`npm run ci` runs the pipeline in CI's order: Biome, `tsc`, the tenancy guards, API and unit
-tests, a check that the deploy blueprint really builds and signs in, **the API tests again on
-Postgres and again on a local Worker + D1**, the build, gzipped bundle and image budgets,
-Playwright against the dev server, the suite again against the built output, and Lighthouse.
+`npm run ci` runs CI's pipeline in CI's order: Biome, `tsc`, the tenancy guards, API and unit
+tests, a check that the deploy blueprint builds and signs in, the API tests again on Postgres and
+again on a local Worker + D1, the build, bundle and image budgets, Playwright against the dev
+server, the suite again against the built output, and Lighthouse.
 
-Running the API suite three times is the point. The same assertions pass against SQLite,
-Postgres and D1 — minus thirteen the Worker cannot share, each skipped where it is written and
-for a stated reason — so "the database is behind an interface" is checked rather than asserted.
-Checked against something that disagrees, too: SQLite and D1 share a dialect, so those two
-agreeing proved very little. It is all local, since wrangler runs on Miniflare and Postgres runs
-as WebAssembly: no Cloudflare account, no container, no database server.
+**The API suite runs three times.** The same 146 assertions pass on SQLite and Postgres, and 133
+of them on a Worker with D1 — the thirteen skipped reach into this process's database or swap a
+module-level seam, which a separate Worker does not share. It is all local: wrangler runs on
+Miniflare and Postgres runs as WebAssembly, so no account, container or database server is
+needed.
 
-Accessibility is checked twice, because one check cannot reach everything. Lighthouse audits
-the public page and `/app`, but it cannot sign in — so `e2e/a11y.spec.ts` sweeps the signed-in
-portal with axe, in both themes, with a project, an invitation and an audit log on screen, and
-again with a project open for editing. It gates serious and critical findings only; the rest
-are advisory and a gate on them is noise. Neither check makes the app accessible — axe finds a
-subset of problems, and a green sweep is a floor rather than a verdict.
+**Accessibility is checked twice.** Lighthouse audits the public pages and `/app` but cannot sign
+in, so `e2e/a11y.spec.ts` sweeps the signed-in portal with axe in both themes, with real content
+on screen and with a project open for editing. It gates serious and critical findings only.
+Neither check makes the app accessible — a green sweep is a floor, not a verdict.
 
-Lighthouse gates accessibility, SEO, best-practices and CLS — all properties of the code. It
-measures performance and prints it without gating: a shared runner's timings drift more than
-the thing being measured, and the bundle budget is the half of performance that is
-deterministic. `npm run ci` skips it locally for the same reason; run `npm run check:lighthouse`
-on a quiet machine.
+Lighthouse gates accessibility, SEO, best-practices and CLS, all properties of the code. It
+prints performance without gating it, because a shared runner's timings drift more than the thing
+being measured; the bundle budget is the deterministic half. `npm run ci` skips it locally — run
+`npm run check:lighthouse` on a quiet machine.
 
 ---
 
 ## Deployment
 
-The two halves deploy separately.
+The two halves deploy separately, and nothing has to be deployed for the starter to be useful.
 
-**The public pages are static.** CI builds them with `VITE_BASE` and publishes to GitHub Pages
-on every push to `main`. Set `BASE_PATH` at the top of `.github/workflows/ci.yml` to your own
-repository name, or `/` for a custom domain. A static host needs `404.html` to be the app
-itself, or a deep link never boots the router — the workflow copies `index.html` over it.
+**The public pages are static.** CI builds them with `VITE_BASE` and publishes to GitHub Pages on
+every push to `main`. Set `BASE_PATH` at the top of `.github/workflows/ci.yml` to your repository
+name, or `/` for a custom domain.
 
-Nothing here has to be deployed for the starter to be useful — clone it and it runs. What
-follows is how to put it somewhere when you want to.
+**The app needs a server, and runs on three databases.** The routes are a
+[Hono](https://hono.dev) app on Web-standard Request and Response, so the same code serves a Node
+process or a Cloudflare Worker. Nothing in `packages/api/src` changes between them: the database
+sits behind `Driver` (`db/index.ts`, `db/d1.ts`, `db/postgres.ts`) and password hashing uses Web
+Crypto rather than `node:crypto`.
 
-**The app needs a server, and runs on two kinds.** The routes are a [Hono](https://hono.dev)
-app built on the Request and Response of the Web platform, so the same code serves a Node
-process or a Cloudflare Worker. Point the front end at whichever with `VITE_API_URL` at build
-time. Served without one — as on the Pages deploy above — the portal says so rather than
-showing a sign-in form that cannot work.
+**One free instance, both halves** — [`render.yaml`](render.yaml) deploys everything to Render's
+free plan, which is what the demo runs on. The API serves the built front end so both share an
+origin, and that is not a shortcut: the session cookie is `SameSite=Lax`, so a browser will not
+send it cross-*site*. `app.example.com` with `api.example.com` is fine, one origin is fine, but
+pages and API on different sites means nobody can sign in. Splitting them for real means
+`SameSite=None; Secure` **and** CSRF tokens.
 
-**One free instance, both halves** — [`render.yaml`](render.yaml) deploys the whole thing to
-Render's free plan at no cost, which is what the demo above is running on: the API serves the built front end, so pages and API share an
-origin. That is not a shortcut. The session cookie is `SameSite=Lax`, so a browser will not send
-it cross-*site* — two hosts means nobody can sign in, whatever the URLs say. One origin, and
-there is nothing to configure.
-
-Free means the instance sleeps when idle and has no persistent disk, so the database rebuilds
-itself from the seed on each cold start. That is a good demo and a bad production database:
-attach a disk or point `DATABASE_URL` at a hosted one, and turn `DEMO_SEED` off.
-
-#### Keeping a free instance awake
-
-A free instance sleeps after roughly fifteen idle minutes, and waking it takes half a minute of
-the host's own holding page. Any external monitor that requests a URL on a schedule prevents it.
-`/health` is the one to point at: it answers without touching the database.
-
-This repository used to do it with a GitHub Actions schedule, and that is worth explaining
-rather than just deleting. Scheduled workflows are best-effort — they queue behind everything
-else on the runners — so a `*/10` cron here actually fired every 17 to 89 minutes, median 31,
-across 29 consecutive runs. **Every one of those gaps was longer than the fifteen minutes it was
-supposed to stay under**, so the job succeeded every time and did nothing. An uptime monitor
-(UptimeRobot's free tier polls every five minutes, and honours it) is the right tool.
-
-Two things to know before turning one on. Staying awake around the clock spends roughly 730 of
-Render's 750 free instance-hours a month, which fits for exactly one service and not two. And
-`healthCheckPath` in [`render.yaml`](render.yaml) does not help: Render only uses it while a
-deploy is going out.
-
-Nothing keeps a deploy itself invisible on the free plan. There is no zero-downtime rollout, so
-while a new build is being promoted the holding page is what visitors get.
-
-**Cloudflare Workers + D1, when it needs to be real** — [`wrangler.toml`](wrangler.toml):
+**Cloudflare Workers + D1** — [`wrangler.toml`](wrangler.toml):
 
 ```bash
 npx wrangler d1 create hamscaler          # paste the id into wrangler.toml
@@ -288,8 +223,11 @@ npx wrangler d1 migrations apply hamscaler --remote
 npx wrangler deploy
 ```
 
-**Postgres, when SQLite is not the answer** — `db/postgres.ts` implements the same `Driver`
-against any `pg` client:
+Workers' free plan allows 10ms of CPU per request, and hashing a password properly costs more
+than that on purpose, so this means the paid plan. Lowering the iteration count to fit the free
+tier trades every stored password's security for the hosting bill.
+
+**Postgres** — the same `Driver` against any `pg` client:
 
 ```ts
 import { Pool, types } from 'pg';
@@ -297,54 +235,38 @@ types.setTypeParser(types.builtins.INT8, Number); // timestamps, not strings
 setDriver(postgresDriver(new Pool({ connectionString: process.env.DATABASE_URL })));
 ```
 
-Nothing in `packages/api/src` changes between any of the three. Three seams make that true: the
-routes are Hono, the database is behind `Driver` (`db/index.ts` for Node, `db/d1.ts` for D1,
-`db/postgres.ts` for Postgres), and password hashing is Web Crypto rather than `node:crypto`.
-`index.ts` is the Node entry point and `worker.ts` the Workers one; both import the same app.
+### Configuration
 
-That is checked rather than claimed. `npm run test:api` and `npm run test:api:postgres` run the
-same 146 assertions against SQLite and Postgres; `npm run test:api:worker` runs 133 of them
-against a local Worker and D1 — the thirteen it skips are the ones that reach into this
-process's database or swap a module-level seam, which a separate Worker does not share, and
-each says so where it is skipped.
+| Variable | What it does |
+| --- | --- |
+| `DATABASE_URL` | Where the database lives. `node:sqlite` writes a local file, which suits one instance; point it at a hosted database for anything real |
+| `DEMO_SEED` | Seeds the two demo organisations on start-up. Leave unset anywhere real |
+| `SITE_URL` | The origin the pages are served from, scheme and host only. The sitemap and social tags are built from it |
+| `VITE_API_URL` | Where the front end looks for the API, if they are built separately |
+| `LOG_LEVEL` | `debug` / `info` / `warn` / `error` / `silent` |
 
-Two SQLite-family drivers agreeing proved very little, since they share a dialect. Postgres has
-a different wire protocol, different placeholders and a 32-bit `INTEGER` that a millisecond
-timestamp overflows, and the app runs against it unchanged. It goes through PGlite — Postgres
-compiled to WebAssembly — so the check needs no container, no server and no credentials.
+A free instance has no persistent disk, so the database is rebuilt from the seed on every
+restart — good for a demo, wrong for anything else. Attach a disk or use a hosted database, and
+turn `DEMO_SEED` off.
 
-Workers' free plan allows 10ms of CPU per request, and hashing a password properly costs more
-than that on purpose — so Workers means the $5/mo paid plan. Lowering the iteration count to fit
-the free tier would be trading every stored password's security for the hosting bill.
+### Keeping a free instance awake
 
-**The pages and the API have to share a site.** The session cookie is `SameSite=Lax`, which is
-what makes it immune to cross-site request forgery without a token dance, and the price is that
-the browser will not send it on a cross-*site* request. `app.example.com` with
-`api.example.com` is fine; one origin serving both is fine. GitHub Pages with a separate host
-is not — different sites, so the cookie never arrives, which is why that deploy shows the
-"no API" screen instead. Splitting them for real means `SameSite=None; Secure` **and** CSRF
-tokens: a deliberate trade, not one to back into by setting `VITE_API_URL`.
+A free instance sleeps after about fifteen idle minutes, and waking it costs half a minute of the
+host's holding page. Any uptime monitor that requests a URL on a schedule prevents it — point one
+at `/health`, which answers without touching the database, at an interval under fifteen minutes.
 
-`node:sqlite` writes to a local file, which suits a single instance — and a free instance
-usually has no persistent disk, so the database is gone on every restart. Fine for a demo,
-wrong for anything real: attach a disk, or point `DATABASE_URL` at a hosted database and
-replace `packages/api/src/db/index.ts`, which nothing above the query helpers imports a driver
-through.
-
-Set `SITE_URL` to the origin the pages are served from — scheme and host only, no path. It is
-what the sitemap is built from, and left unset it points at this repository's Pages host, which
-is wrong for a fork.
-
-**Node 22** is required (`.nvmrc`).
+Staying awake around the clock spends roughly 730 of Render's 750 free instance-hours a month,
+which fits one service and not two. `healthCheckPath` in [`render.yaml`](render.yaml) does not
+help: Render only uses it while a deploy is going out. Nor is the deploy window itself avoidable
+on the free plan — there is no zero-downtime rollout, so the holding page is what visitors get
+while a new build is promoted.
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) — in particular the rules the build enforces, which
-are checks rather than preferences.
-
----
+See [CONTRIBUTING.md](CONTRIBUTING.md) — in particular the rules the build enforces, which are
+checks rather than preferences.
 
 ## Licence
 
