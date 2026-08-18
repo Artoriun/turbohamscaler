@@ -37,27 +37,27 @@ export const en = {
     features: {
       accounts: {
         title: 'Accounts that revoke',
-        body: 'Sessions are rows, not tokens. Signing out everywhere really does end every session on every device — no waiting for a token to expire. An escaped hamster you can actually catch again.',
+        body: 'Sessions are rows, not tokens. Signing out everywhere really does end every session on every device — no waiting for a token to expire.',
       },
       orgs: {
         title: 'Organisations and roles',
-        body: 'Members, admins and owners, with per-organisation data. Everyone starts in a burrow of their own and gets into anyone else’s by invitation, which is more than you can say for the average hamster.',
+        body: 'Members, admins and owners, with per-organisation data. Everyone starts in an organisation of their own and joins others by invitation.',
       },
       isolation: {
         title: 'Tenant isolation, proven',
-        body: 'Every tenant query lives in one file and takes the organisation first. A suite written from the attacker’s side proves the rows stay apart — one hamster, one burrow, no chewing through the wall.',
+        body: 'Every tenant query lives in one file and takes the organisation first. A suite written from the attacker’s side proves the rows stay apart.',
       },
       migrations: {
         title: 'Migrations that refuse to drift',
-        body: 'Applied in order and hashed, so editing one that has already run is an error rather than a database that quietly differs from everyone else’s. Hoarded carefully, like everything else around here.',
+        body: 'Applied in order and hashed, so editing one that has already run is an error rather than a database that quietly differs from everyone else’s.',
       },
       nothing: {
         title: 'Runs on a diet of nothing',
-        body: 'No account, no container, no native build. Install, seed, and you have a working app with two organisations to poke at. Cheaper to feed than the hamster, and it does not wake you at three in the morning.',
+        body: 'No account, no container, no native build. Install, seed, and you have a working app with two organisations to poke at. Cheaper to run than the hamster.',
       },
       pipeline: {
         title: 'A pipeline that squeaks when it should',
-        body: 'Lint, types, tenancy guards, unit and API tests, bundle and image budgets, the API suite against three databases, and the browser suite twice — dev server and built output. It squeaks before you ship, not after.',
+        body: 'Lint, types, tenancy guards, unit and API tests, bundle and image budgets, the API suite against three databases, and the browser suite twice — dev server and built output.',
       },
     },
   },
