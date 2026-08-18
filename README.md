@@ -28,9 +28,10 @@ That is the thing this starter is about, and it is a sign-in away rather than a 
 | `turboham@example.com` | `hamster-wheel-9000` | TurboHam & Co Wheelwrights, as its owner |
 | `teemo@example.com` | `hamster-wheel-9000` | Teemo Industries, as its owner |
 
-Break whatever you like: the database is rebuilt from the seed on every restart. A scheduled
-ping keeps the instance awake, because the free plan sleeps after fifteen idle minutes and a
-cold start shows the host's holding page rather than this app.
+Break whatever you like: the database is rebuilt from the seed on every restart. The free plan
+sleeps after about fifteen idle minutes, so the first request after a quiet spell waits on a
+cold start and shows the host's holding page rather than this app — see
+[keeping it awake](#keeping-a-free-instance-awake).
 
 > The GitHub Pages copy — https://artoriun.github.io/turbohamscaler/ — is the public marketing
 > pages as static files, with **no server behind them**. There is nothing to sign in to there;
@@ -258,6 +259,27 @@ there is nothing to configure.
 Free means the instance sleeps when idle and has no persistent disk, so the database rebuilds
 itself from the seed on each cold start. That is a good demo and a bad production database:
 attach a disk or point `DATABASE_URL` at a hosted one, and turn `DEMO_SEED` off.
+
+#### Keeping a free instance awake
+
+A free instance sleeps after roughly fifteen idle minutes, and waking it takes half a minute of
+the host's own holding page. Any external monitor that requests a URL on a schedule prevents it.
+`/health` is the one to point at: it answers without touching the database.
+
+This repository used to do it with a GitHub Actions schedule, and that is worth explaining
+rather than just deleting. Scheduled workflows are best-effort — they queue behind everything
+else on the runners — so a `*/10` cron here actually fired every 17 to 89 minutes, median 31,
+across 29 consecutive runs. **Every one of those gaps was longer than the fifteen minutes it was
+supposed to stay under**, so the job succeeded every time and did nothing. An uptime monitor
+(UptimeRobot's free tier polls every five minutes, and honours it) is the right tool.
+
+Two things to know before turning one on. Staying awake around the clock spends roughly 730 of
+Render's 750 free instance-hours a month, which fits for exactly one service and not two. And
+`healthCheckPath` in [`render.yaml`](render.yaml) does not help: Render only uses it while a
+deploy is going out.
+
+Nothing keeps a deploy itself invisible on the free plan. There is no zero-downtime rollout, so
+while a new build is being promoted the holding page is what visitors get.
 
 **Cloudflare Workers + D1, when it needs to be real** — [`wrangler.toml`](wrangler.toml):
 
