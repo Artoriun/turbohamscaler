@@ -20,44 +20,44 @@ export const en = {
   },
 
   home: {
-    eyebrow: 'TurboRepo starter',
+    eyebrow: 'TurboRepo starter · wheel included',
     // Split so the accent span can wrap only the second half.
     headline: 'The boring half of a multi-tenant app,',
     headlineAccent: 'already done',
-    lede: 'TurboHamscaler gives you accounts, organisations, roles and per-tenant data — with the isolation checks that keep them honest. Clone it and start on the part that is actually yours.',
+    lede: 'TurboHamscaler gives you accounts, organisations, roles and per-tenant data — with the isolation checks that keep them honest. You scale by adding wheels. Clone it and start on the part that is actually yours.',
     openDemo: 'Open the demo',
     readSource: 'Read the source',
     demoSignIn: 'Demo sign-in:',
     whatYouGet: 'What you get',
     startHeading: 'Start in three commands',
     startNote:
-      'Two organisations are seeded on purpose: TurboHam runs a wheelwright’s, Teemo is in bedding. Sign in as one and the other’s data is simply not there — no filter to remember, no flag to forget.',
+      'Two organisations are seeded on purpose: TurboHam runs a wheelwright’s, Teemo is in bedding. Separate burrows, no connecting tunnel. Sign in as one and the other’s data is simply not there — no filter to remember, no flag to forget.',
     footer:
-      'TurboHamscaler — a TurboRepo starter for multi-tenant apps. Every service it needs has a free tier, so the running cost is a hamster-appropriate zero.',
+      'TurboHamscaler — a TurboRepo starter for multi-tenant apps. Every service it needs has a free tier, so the running cost is a hamster-appropriate zero. Bedding not included.',
     features: {
       accounts: {
         title: 'Accounts that revoke',
-        body: 'Sessions are rows, not tokens. Signing out everywhere actually ends every session, on every device — no waiting for a token to expire.',
+        body: 'Sessions are rows, not tokens. Signing out everywhere really does end every session on every device — no waiting for a token to expire. An escaped hamster you can actually catch again.',
       },
       orgs: {
         title: 'Organisations and roles',
-        body: 'Members, admins and owners, with per-organisation data. Everyone starts in an organisation of their own and joins others by invitation.',
+        body: 'Members, admins and owners, with per-organisation data. Everyone starts in a burrow of their own and gets into anyone else’s by invitation, which is more than you can say for the average hamster.',
       },
       isolation: {
         title: 'Tenant isolation, proven',
-        body: 'Every tenant query lives in one file and takes the organisation first. A test suite written from the attacker’s side proves the rows stay apart.',
+        body: 'Every tenant query lives in one file and takes the organisation first. A suite written from the attacker’s side proves the rows stay apart — one hamster, one burrow, no chewing through the wall.',
       },
       migrations: {
         title: 'Migrations that refuse to drift',
-        body: 'Applied in order and hashed, so editing one that has already run is an error rather than a database that quietly differs from everyone else’s.',
+        body: 'Applied in order and hashed, so editing one that has already run is an error rather than a database that quietly differs from everyone else’s. Hoarded carefully, like everything else around here.',
       },
       nothing: {
         title: 'Runs on a diet of nothing',
-        body: 'No account, no container, no native build. Install, seed, and you have a working app with two organisations to poke at. Cheaper to run than the hamster.',
+        body: 'No account, no container, no native build. Install, seed, and you have a working app with two organisations to poke at. Cheaper to feed than the hamster, and it does not wake you at three in the morning.',
       },
       pipeline: {
         title: 'A pipeline that squeaks when it should',
-        body: 'Lint, types, tenancy guards, unit and API tests, a bundle budget, and the browser suite run twice — against the dev server and the built output.',
+        body: 'Lint, types, tenancy guards, unit and API tests, bundle and image budgets, the API suite against three databases, and the browser suite twice — dev server and built output. It squeaks before you ship, not after.',
       },
     },
   },
