@@ -108,9 +108,8 @@ account, and it arrived in 22. The install refuses anything older rather than le
 out at the first query.
 
 Sign in as `turboham@example.com` or `teemo@example.com`, password `hamster-wheel-9000`.
-TurboHam runs a wheelwright's; Teemo is in bedding. They are in separate organisations on
-purpose: sign in as one and the other's data is simply not there — no filter, no flag, nothing
-to forget.
+The two accounts are in separate organisations on purpose: sign in as one and the other's data
+is simply not there — no filter, no flag, nothing to forget.
 
 No `.env` is needed to run it. For production see [`.env.example`](.env.example).
 

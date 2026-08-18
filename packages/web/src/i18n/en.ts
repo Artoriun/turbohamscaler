@@ -33,7 +33,7 @@ export const en = {
     whatYouGet: 'What you get',
     startHeading: 'Start in three commands',
     startNote:
-      'Two organisations are seeded on purpose: TurboHam runs a wheelwright’s, Teemo is in bedding. Separate burrows, no connecting tunnel. Sign in as one and the other’s data is simply not there — no filter to remember, no flag to forget.',
+      'Two organisations are seeded on purpose. Sign in as TurboHam and the other one’s projects, members and audit log are simply not there — separate burrows, no connecting tunnel, no filter to remember and no flag to forget.',
     footer:
       'TurboHamscaler — a TurboRepo starter for multi-tenant apps. Every service it needs has a free tier, so the running cost is a hamster-appropriate zero. Bedding not included.',
     features: {
