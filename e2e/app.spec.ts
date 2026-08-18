@@ -203,6 +203,19 @@ test('nothing in the signed-in header sits on top of anything else', async ({ pa
   // being tested here. Overlap and containment are the code's business; fitting is not.
 });
 
+test('the privacy page is reachable, prerendered and honest about the cookie', async ({ page }) => {
+  // A privacy page nobody can find is decoration, so this arrives the way a visitor does.
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Privacy' }).click();
+  await expect(page).toHaveURL(/\/privacy$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Privacy' })).toBeVisible();
+
+  // The claim most likely to rot: this app does set a cookie, and the page says which one and
+  // why. If the session stops being a cookie, this line has to change with it.
+  await expect(page.getByText('httpOnly')).toBeVisible();
+  await expect(page.getByText('SameSite=Lax')).toBeVisible();
+});
+
 test('the signed-in page never scrolls sideways, at any width', async ({ page }) => {
   // The panels were 404px wide inside a 320px screen. Grid and flex items default to
   // `min-width: auto` — "never shrink below your own content" — so a panel holding a row of

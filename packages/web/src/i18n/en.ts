@@ -13,6 +13,7 @@ export const en = {
   language: { label: 'Language' },
 
   nav: {
+    privacy: 'Privacy',
     overview: 'Overview',
     source: 'Source',
     openApp: 'Open the demo',

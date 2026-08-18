@@ -29,7 +29,7 @@ const DIST = join(ROOT, 'packages/web/dist');
 const PORT = Number(process.env.PRERENDER_PORT ?? 3494);
 
 /** Rendered with their content in the markup. */
-const PUBLIC_ROUTES = ['', 'ja'];
+const PUBLIC_ROUTES = ['', 'privacy', 'ja', 'ja/privacy'];
 /** Given a file so the host answers 200, but left as the shell. See the note above. */
 const SHELL_ROUTES = ['app', 'ja/app'];
 

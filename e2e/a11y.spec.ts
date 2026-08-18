@@ -66,6 +66,15 @@ test('the public page has no serious violations', async ({ page }) => {
   await expectNoViolations(page, 'the public page');
 });
 
+test('the privacy page has no serious violations, in both languages', async ({ page }) => {
+  // Mostly headings and prose, which is where heading order and contrast go wrong quietly.
+  for (const path of ['/privacy', '/ja/privacy']) {
+    await page.goto(path);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expectNoViolations(page, `the privacy page at ${path}`);
+  }
+});
+
 test('the signed-in portal has no serious violations', async ({ page }) => {
   await populatedPortal(page);
   await expectNoViolations(page, 'the portal, light');

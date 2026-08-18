@@ -19,6 +19,14 @@ import NotFound from './pages/NotFound';
 const Portal = lazy(() => import('./pages/Portal'));
 
 /**
+ * Also loaded on demand. It is a page of prose that almost nobody opens, and shipping it with
+ * the marketing page put the initial payload over its budget — which is what the budget is for.
+ * Prerendering still writes it out with its text in the markup, because that happens in a real
+ * browser that waits for the chunk.
+ */
+const Privacy = lazy(() => import('./pages/Privacy'));
+
+/**
  * Routing, and the chrome the public pages share.
  *
  * Every route is registered twice: once at the root for the default language and once under a
@@ -55,6 +63,17 @@ export default function App() {
               <Routes>
                 {PREFIXES.map((prefix) => (
                   <Route key={prefix || 'root'} path={`${prefix}/`} element={<Home />} />
+                ))}
+                {PREFIXES.map((prefix) => (
+                  <Route
+                    key={`${prefix || 'root'}-privacy`}
+                    path={`${prefix}/privacy`}
+                    element={
+                      <Suspense fallback={null}>
+                        <Privacy />
+                      </Suspense>
+                    }
+                  />
                 ))}
                 <Route path="*" element={<NotFound />} />
               </Routes>
@@ -103,6 +122,7 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
       <footer className="footer">
         <div className="footer-inner">
           <span>{t.home.footer}</span>
+          <Link to={pathFor(lang, '/privacy')}>{t.nav.privacy}</Link>
           <a href="https://github.com/Artoriun/turbohamscaler" rel="noreferrer">
             {t.nav.sourceOnGitHub}
           </a>

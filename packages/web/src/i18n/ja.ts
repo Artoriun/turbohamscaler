@@ -9,6 +9,7 @@ export const ja: Dictionary = {
   language: { label: '言語' },
 
   nav: {
+    privacy: 'プライバシー',
     overview: '概要',
     source: 'ソース',
     openApp: 'デモを開く',
