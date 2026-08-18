@@ -108,6 +108,15 @@ body {
   padding-block: 2rem 4rem;
 }
 
+/* Less air under the last paragraph on a phone. 4rem below the content plus the footer's own
+   padding left about 80px of empty page above the footer rule, which on a dark screen reads as
+   the page having ended early rather than as spacing. */
+@media (max-width: 30rem) {
+  .page {
+    padding-block: 1.5rem 2rem;
+  }
+}
+
 .page-head {
   margin-bottom: 1.5rem;
 }
@@ -740,24 +749,29 @@ code {
   padding: 0;
 }
 
-.footer {
+/* Centred, stacked, and the same in both orientations. What was here put the description, the
+   privacy link and the source link in one wrapping flex row: on a wide screen that reads as a
+   row, and on a phone the description filled the line, the privacy link landed beside its last
+   word, and the source link dropped underneath on its own. */
+.site-footer {
   border-top: 1px solid var(--line);
-  margin-top: 2rem;
-}
-.footer-inner {
-  max-width: 62rem;
-  margin: 0 auto;
-  padding: 1.25rem 1rem 2.5rem;
+  padding: 1.5rem 1rem 2.25rem;
+  text-align: center;
   color: var(--muted);
   font-size: 0.9rem;
-  display: flex;
-  gap: 0.75rem 1.5rem;
-  flex-wrap: wrap;
-  align-items: baseline;
 }
-.footer-inner span {
-  flex: 1;
-  min-width: 16rem;
+
+.site-footer p {
+  /* The measure keeps the sentence to two or three lines on a phone rather than five. */
+  max-width: 40rem;
+  margin: 0 auto 0.9rem;
+}
+
+.footer-links {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
 }
 
 .centre-block {

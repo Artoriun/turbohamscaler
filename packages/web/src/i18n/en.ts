@@ -13,6 +13,7 @@ export const en = {
   language: { label: 'Language' },
 
   nav: {
+    footerLinks: 'Footer',
     privacy: 'Privacy',
     overview: 'Overview',
     source: 'Source',

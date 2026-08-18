@@ -119,14 +119,18 @@ function PublicLayout({ children }: { children: React.ReactNode }) {
 
       <main className="page">{children}</main>
 
-      <footer className="footer">
-        <div className="footer-inner">
-          <span>{t.home.footer}</span>
+      {/* Centred and stacked, the same shape TurboHamstarter uses. The previous one was a flex
+          row that let the description take the whole line and then sat "Privacy" beside its last
+          word, with the GitHub link orphaned underneath — which on a phone read as a mistake
+          rather than a footer. */}
+      <footer className="site-footer">
+        <p>{t.home.footer}</p>
+        <nav className="footer-links" aria-label={t.nav.footerLinks}>
           <Link to={pathFor(lang, '/privacy')}>{t.nav.privacy}</Link>
           <a href="https://github.com/Artoriun/turbohamscaler" rel="noreferrer">
             {t.nav.sourceOnGitHub}
           </a>
-        </div>
+        </nav>
       </footer>
     </>
   );
