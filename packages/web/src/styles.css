@@ -1,9 +1,9 @@
 /* Geist, self-hosted, so the headings here are the same typeface as TurboHamstarter's — the
    two starters are siblings and their titles should read as coming from the same place.
 
-   Both cuts are shipped. The italic is a real one: the accent clause in the heading is italic,
-   and with only the upright file a browser shears it into a synthesised oblique, which is what
-   the sibling repo's own comment records having to fix.
+   Both cuts are declared. The italic is a real one rather than a synthesised oblique, which is
+   what the sibling repo's own comment records having to fix. Nothing currently renders italic
+   — the hero's accent is the upright product name — so a browser never fetches that file.
 
    `font-display: optional` on purpose. It gives the font one very short window to arrive and
    otherwise keeps the fallback for that page load, never swapping mid-view — so a heading can
@@ -52,6 +52,7 @@
   --line: #e2e7ee;
   --accent: #0d7a6f;
   --accent-fg: #ffffff;
+  --accent-2: #e88fa0;
   --danger: #a8202a;
   --shadow: 0 1px 2px rgb(20 23 28 / 6%), 0 8px 24px rgb(20 23 28 / 6%);
   color-scheme: light;
@@ -67,6 +68,7 @@
   --line: #262c35;
   --accent: #2dd4bf;
   --accent-fg: #06231f;
+  --accent-2: #e88fa0;
   --danger: #f87171;
   --shadow: none;
   color-scheme: dark;
@@ -694,6 +696,28 @@ a {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The same chip TurboHamstarter puts above its hero, down to the numbers — the two starters
+   are siblings and the label above the title should read as coming from the same place.
+   One ::before rather than extra markup: a hard-stopped gradient with a transparent middle
+   reads as two small squares, pink then --fg, which is near-white on the dark ground and
+   near-black on the light one. --accent-2 is decorative only and never carries meaning, so
+   it is the one hue that does not need to clear a contrast ratio. */
+.eyebrow::before {
+  content: "";
+  flex: none;
+  width: 12px;
+  height: 6px;
+  background: linear-gradient(
+    to right,
+    var(--accent-2) 0 45%,
+    transparent 45% 55%,
+    var(--fg) 55% 100%
+  );
 }
 
 /* The same heading treatment as TurboHamstarter, down to the numbers: 93.6px at 1440 on the
@@ -714,10 +738,14 @@ a {
   max-width: 16ch;
 }
 
-/* The accent clause is a real italic in the accent colour — the device the source hero is
-   built around, and the reason both font files are shipped. */
-.hero h1 em {
-  font-style: italic;
+/* The product name carries the accent colour and the rest of the sentence stays at --fg,
+   which is the near-white #e7eaef in dark mode and near-black in light — the heading has to
+   stay readable on both grounds, so this is the token rather than a literal white.
+
+   Upright, not the italic the accent clause used to be: a product name set in italic reads as
+   emphasis on the word rather than as branding. The italic face is still declared at the top
+   of this file and nothing renders italic any more, so a browser never fetches it. */
+.hero h1 .hero-brand {
   color: var(--accent);
 }
 

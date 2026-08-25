@@ -29,7 +29,7 @@ export default function Home() {
         <div className="hero-text">
           <p className="eyebrow">{t.home.eyebrow}</p>
           <h1>
-            {t.home.headline} <em>{t.home.headlineAccent}</em>.
+            <span className="hero-brand">{t.home.headlineBrand}</span>: {t.home.headline}
           </h1>
           <p className="lede">{t.home.lede}</p>
           <div className="cta">

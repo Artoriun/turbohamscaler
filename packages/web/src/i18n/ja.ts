@@ -19,8 +19,8 @@ export const ja: Dictionary = {
 
   home: {
     eyebrow: 'TurboRepo スターター・育ちます',
-    headline: 'マルチテナントアプリの退屈な部分は、',
-    headlineAccent: 'すでに完成',
+    headlineBrand: 'TurboHamscaler',
+    headline: 'マルチテナントアプリの退屈な部分は、すでに完成。',
     lede: 'TurboHamscaler には、アカウント・組織・ロール・テナントごとのデータが揃っています。しかもテナント分離を裏づけるチェック付きです。スケールのしかたは TurboHam と同じ。同じハムスターが、かなり大きくなります。クローンして、あなた自身の仕事から始めてください。',
     openDemo: 'デモを開く',
     readSource: 'ソースを読む',
