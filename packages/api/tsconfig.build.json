@@ -3,6 +3,11 @@
   "compilerOptions": {
     "noEmit": false,
     "outDir": "dist",
+    // TypeScript 7 will not infer this any more: with the test files excluded, the common
+    // source directory it computes is already ./src, and it now asks to be told rather than
+    // guessing. Stating it also pins the output layout, so dist/ keeps its shape whatever
+    // future excludes do to the inferred root.
+    "rootDir": "./src",
     "module": "NodeNext",
     "moduleResolution": "nodenext",
     "allowImportingTsExtensions": false,
