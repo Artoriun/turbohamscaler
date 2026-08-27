@@ -136,7 +136,9 @@ npm run db:reset          # delete the local database and reseed
   example and a default that reaches nobody
 - **Security headers on every response**, including a content security policy that hash-pins the
   one inline script rather than allowing inline scripts generally
-- **Rate-limited sign-in and writes**, recorded in the database so a restart does not reset them
+- **Rate-limited sign-in and writes**, recorded in the database so a restart does not reset them.
+  The sign-in form counts the lockout down instead of reporting it as a wrong password, so
+  someone typing the right one is told to wait rather than left doubting the password
 - **Prerendered public pages** — every route is a real file with its text in the HTML, so a
   crawler that runs no JavaScript still sees it. Real URLs answer 200 and unknown ones 404, with
   a generated `sitemap.xml`, a `robots.txt` pointing at it, and social tags carrying the origin
