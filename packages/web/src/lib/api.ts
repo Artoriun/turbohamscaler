@@ -26,6 +26,12 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
+    /**
+     * How long the caller must wait, when the server says so. Sign-in and the write limit
+     * both send it on a 429; keeping only the code threw away the one number a screen needs
+     * to count down, which left a lockout looking exactly like a wrong password.
+     */
+    readonly retryAfterMs?: number,
   ) {
     super(code);
   }
@@ -38,7 +44,10 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...init.headers },
   });
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      retryAfterMs?: unknown;
+    };
     // One event, not a throw at every call site: the app listens in one place and swaps in the
     // sign-in form rather than each screen inventing its own handling.
     //
@@ -49,7 +58,11 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (res.status === 401 && !path.startsWith('/api/auth/')) {
       window.dispatchEvent(new Event(SIGNED_OUT_EVENT));
     }
-    throw new ApiError(res.status, body.error ?? `http-${res.status}`);
+    throw new ApiError(
+      res.status,
+      body.error ?? `http-${res.status}`,
+      typeof body.retryAfterMs === 'number' ? body.retryAfterMs : undefined,
+    );
   }
   // 204 carries no body, and asking for one throws. Revoking an invitation answers this way.
   if (res.status === 204) return undefined as T;
