@@ -78,6 +78,8 @@ export const ja: Dictionary = {
     switchToSignUp: '新しくアカウントを作成する',
     switchToSignIn: 'すでにアカウントを持っている',
     rejected: 'その内容では認証できませんでした。',
+    lockedOut: 'サインインの試行回数が多すぎます。{time} 後にもう一度お試しください。',
+    lockedOutSoon: 'サインインの試行回数が多すぎます。しばらくしてからもう一度お試しください。',
     couldNotCreate: 'アカウントを作成できませんでした。',
     weakPassword: 'パスワードは 10 文字以上にしてください。',
     emailTaken: 'そのメールアドレスは既に登録されています。',

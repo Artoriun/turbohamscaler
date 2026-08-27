@@ -83,6 +83,8 @@ export const en = {
     switchToSignUp: 'Create an account instead',
     switchToSignIn: 'I already have an account',
     rejected: 'Those details were not accepted.',
+    lockedOut: 'Too many sign-in attempts. Try again in {time}.',
+    lockedOutSoon: 'Too many sign-in attempts. Try again shortly.',
     couldNotCreate: 'Could not create that account.',
     weakPassword: 'Password must be at least 10 characters.',
     emailTaken: 'That address already has an account.',

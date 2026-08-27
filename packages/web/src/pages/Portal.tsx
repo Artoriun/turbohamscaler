@@ -867,6 +867,13 @@ function RoleBadge({ role }: { role: Role }) {
   return <span className={`badge badge-${role}`}>{role}</span>;
 }
 
+/**
+ * m:ss for a countdown. The sign-in lockout runs to fifteen minutes, and "try again in 873s"
+ * is a number nobody converts.
+ */
+const countdown = (seconds: number) =>
+  `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+
 function SignIn({ onDone }: { onDone: () => void }) {
   const t = useT();
   const [mode, setMode] = useState<'in' | 'up'>('in');
@@ -875,6 +882,16 @@ function SignIn({ onDone }: { onDone: () => void }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  /** Seconds left on the sign-in lockout; 0 when the form is usable. */
+  const [lockedFor, setLockedFor] = useState(0);
+
+  // A timeout that reschedules itself rather than an interval: no separate path for the
+  // moment it reaches zero, and drift over a countdown this short is invisible.
+  useEffect(() => {
+    if (!lockedFor) return;
+    const id = setTimeout(() => setLockedFor(lockedFor - 1), 1000);
+    return () => clearTimeout(id);
+  }, [lockedFor]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -885,21 +902,32 @@ function SignIn({ onDone }: { onDone: () => void }) {
       else await apiSignUp(email, name, password);
       onDone();
     } catch (err) {
-      // The API answers a wrong address and a wrong password identically; saying more here
-      // would undo that.
-      setError(
-        err instanceof ApiError && err.code === 'weak-password'
-          ? t.auth.weakPassword
-          : err instanceof ApiError && err.code === 'email-taken'
-            ? t.auth.emailTaken
-            : mode === 'in'
-              ? t.auth.rejected
-              : t.auth.couldNotCreate,
-      );
+      // A lockout is the one thing worth naming. It is not a hint about whether the address
+      // exists — the caller is the one who triggered it — and shown as "those details were
+      // not accepted" it reads as a wrong password to someone typing the right one.
+      if (err instanceof ApiError && err.code === 'too-many-attempts') {
+        const seconds = err.retryAfterMs ? Math.ceil(err.retryAfterMs / 1000) : 0;
+        setLockedFor(seconds);
+        if (!seconds) setError(t.auth.lockedOutSoon);
+      } else {
+        // The API answers a wrong address and a wrong password identically; saying more here
+        // would undo that.
+        setError(
+          err instanceof ApiError && err.code === 'weak-password'
+            ? t.auth.weakPassword
+            : err instanceof ApiError && err.code === 'email-taken'
+              ? t.auth.emailTaken
+              : mode === 'in'
+                ? t.auth.rejected
+                : t.auth.couldNotCreate,
+        );
+      }
     } finally {
       setBusy(false);
     }
   }
+
+  const lockMessage = lockedFor ? t.auth.lockedOut.replace('{time}', countdown(lockedFor)) : '';
 
   return (
     <main className="centre">
@@ -930,12 +958,12 @@ function SignIn({ onDone }: { onDone: () => void }) {
           onChange={setPassword}
           autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
         />
-        {error ? (
+        {lockMessage || error ? (
           <p className="error" role="alert">
-            {error}
+            {lockMessage || error}
           </p>
         ) : null}
-        <button type="submit" disabled={busy}>
+        <button type="submit" disabled={busy || lockedFor > 0}>
           {busy ? t.auth.working : mode === 'in' ? t.auth.signIn : t.auth.createAccountAction}
         </button>
         <button type="button" className="link" onClick={() => setMode(mode === 'in' ? 'up' : 'in')}>
