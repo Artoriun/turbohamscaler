@@ -55,7 +55,12 @@
   --accent-2: #e88fa0;
   --danger: #a8202a;
   --shadow: 0 1px 2px rgb(20 23 28 / 6%), 0 8px 24px rgb(20 23 28 / 6%);
-  color-scheme: light;
+  /* `only light`, not plain `light`: Chrome's auto dark theme (Android's "dark theme for
+     sites", on by default when the phone itself is dark) force-darkens any page whose
+     color-scheme doesn't include dark, so on those phones the light theme came out
+     near-black and the toggle looked broken. `only light` opts out of that darkening; the
+     dark theme below needs no equivalent because declaring `dark` already opts out. */
+  color-scheme: only light;
 }
 
 /* color-scheme tells the browser which native form controls and scrollbars to draw. Without
