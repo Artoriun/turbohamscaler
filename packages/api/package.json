@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@hamscaler/shared": "*",
-    "@hono/node-server": "^2.1.1",
-    "hono": "^4.13.3"
+    "@hono/node-server": "^2.1.5",
+    "hono": "^4.13.14"
   },
   "devDependencies": {
     "@types/node": "^22.19.2"
